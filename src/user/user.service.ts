@@ -39,7 +39,7 @@ export class UserService {
     try {
       const user = await this.userRepository.findOne({ where: { id } });
       if (!user) {
-        throw new Error('Пользователь не найден');
+        new Error('User is not found');
       }
 
       if (updateUserDto.password) {
@@ -70,10 +70,10 @@ export class UserService {
         .getOne();
 
       if (!user) {
-        throw new Error('Пользователь не найден');
+        new Error('User is not found');
       }
 
-      const { id: userId, username, firstName, lastName } = user; // Исключаем поле password
+      const { id: userId, username, firstName, lastName } = user;
 
       return {
         id: userId,
@@ -83,7 +83,7 @@ export class UserService {
       };
     } catch (error) {
       this.logger.error(`Error fetching user by ID: ${error.message}`);
-      throw error; // Проброс ошибки выше для обработки в контроллере или другом месте
+      throw error;
     }
   }
 
@@ -109,11 +109,10 @@ export class UserService {
       return { users: usersDto, total, page, limit };
     } catch (error) {
       this.logger.error(`Error fetching users with pagination: ${error.message}`);
-      throw error; // Проброс ошибки выше для обработки в контроллере или другом месте
+      throw error;
     }
   }
 
-  // Метод для хеширования пароля с использованием pbkdf2
   private async hashPassword(password: string): Promise<string> {
     try {
       const salt = crypto.randomBytes(16).toString('hex');
@@ -155,27 +154,12 @@ export class UserService {
 
   private comparePasswords(password: string, userPasswordHash: string): boolean {
     try {
-      this.logger.log('Comparing passwords');
-      this.logger.log(`password: ${password}`);
-      this.logger.log(`userPasswordHash: ${userPasswordHash}`);
-
       const [salt, userHash] = userPasswordHash.split(':');
       const derivedKey = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
-
-      this.logger.log(`salt: ${salt}`);
-      this.logger.log(`userHash: ${userHash}`);
-      this.logger.log(`derivedKey: ${derivedKey}`);
-
-      const passwordsMatch = userHash === derivedKey;
-
-      this.logger.log(`Passwords match: ${passwordsMatch}`);
-
-      return passwordsMatch;
+      return userHash === derivedKey;
     } catch (error) {
       this.logger.error(`Error comparing passwords: ${error.message}`);
       throw error;
     }
   }
-
-  // Другие методы, включая получение списка пользователей и т. д.
 }
