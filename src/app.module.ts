@@ -1,4 +1,3 @@
-// app.module.ts
 import { Logger, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserController } from './user/user.controller';
@@ -18,8 +17,8 @@ dotenv.config();
   imports: [
     TypeOrmModule.forFeature([User]),
     JwtModule.register({
-      secret: process.env.SECRET_KEY, // Здесь должен быть ваш секретный ключ для JWT
-      signOptions: { expiresIn: '1h' }, // Настройка срока действия токена
+      secret: process.env.SECRET_KEY,
+      signOptions: { expiresIn: '1h' },
     }),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     TypeOrmModule.forFeature([User]),

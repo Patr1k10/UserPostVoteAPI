@@ -20,5 +20,4 @@ export class GetUserDto {
   @Length(1, 30)
   lastName: string;
 
-
 }

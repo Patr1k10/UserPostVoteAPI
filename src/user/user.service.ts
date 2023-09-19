@@ -1,4 +1,3 @@
-// user.service.ts
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -32,7 +31,7 @@ export class UserService {
       return this.userRepository.save(user);
     } catch (error) {
       this.logger.error(`Error creating user: ${error.message}`);
-      throw error; // Проброс ошибки выше для обработки в контроллере или другом месте
+      throw error;
     }
   }
 
@@ -44,13 +43,13 @@ export class UserService {
       }
 
       if (updateUserDto.password) {
-        updateUserDto.password = await this.hashPassword(updateUserDto.password); // Хеширование нового пароля
+        updateUserDto.password = await this.hashPassword(updateUserDto.password);
       }
 
       return this.userRepository.save({ ...user, ...updateUserDto });
     } catch (error) {
       this.logger.error(`Error updating user: ${error.message}`);
-      throw error; // Проброс ошибки выше для обработки в контроллере или другом месте
+      throw error;
     }
   }
   async findByUsername(username: string): Promise<UserDto | undefined> {
@@ -58,7 +57,7 @@ export class UserService {
       return this.userRepository.findOne({ where: { username } });
     } catch (error) {
       this.logger.error(`Error finding user by username: ${error.message}`);
-      throw error; // Проброс ошибки выше для обработки в контроллере или другом месте
+      throw error;
     }
   }
 

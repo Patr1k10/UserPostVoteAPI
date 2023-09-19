@@ -1,4 +1,3 @@
-//user.module.ts
 import { Logger, Module } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UserController } from './user.controller';
@@ -10,9 +9,7 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([User]),
-  ],
+  imports: [TypeOrmModule.forFeature([User])],
   controllers: [UserController, AuthController],
   providers: [UserService, Logger],
 })

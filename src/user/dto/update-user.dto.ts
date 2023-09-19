@@ -1,4 +1,3 @@
-//update-user.dto.ts
 import { IsOptional, IsString, Length } from 'class-validator';
 
 export class UserUpdateDto {

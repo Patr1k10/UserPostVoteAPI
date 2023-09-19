@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UnauthorizedException, Logger } from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException } from '@nestjs/common';
 import { UserDto } from './dto/create-user.dto';
 import { UserService } from './user.service';
 
