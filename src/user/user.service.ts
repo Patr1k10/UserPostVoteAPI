@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as crypto from 'crypto';
@@ -21,12 +21,19 @@ export class UserService {
   async createUser(userDto: UserDto): Promise<User> {
     try {
       this.logger.log(`Creating user: ${JSON.stringify(userDto)}`);
+
+      const existingUser = await this.userRepository.findOne({ where: { username: userDto.username } });
+      if (existingUser) {
+        new ConflictException('Username already exists');
+      }
+
       const user = new User(
         userDto.username,
         userDto.firstName,
         userDto.lastName,
         await this.hashPassword(userDto.password),
       );
+
       this.logger.log(`User created: ${JSON.stringify(user)}`);
       return this.userRepository.save(user);
     } catch (error) {
@@ -39,7 +46,14 @@ export class UserService {
     try {
       const user = await this.userRepository.findOne({ where: { id } });
       if (!user) {
-        new Error('User is not found');
+        throw new Error('User is not found');
+      }
+
+      if (updateUserDto.username) {
+        const existingUser = await this.userRepository.findOne({ where: { username: updateUserDto.username } });
+        if (existingUser && existingUser.id !== id) {
+          throw new ConflictException('Username already exists');
+        }
       }
 
       if (updateUserDto.password) {
@@ -52,6 +66,20 @@ export class UserService {
       throw error;
     }
   }
+
+  async softDeleteUser(id: number): Promise<void> {
+    try {
+      const result = await this.userRepository.softDelete(id);
+      if (result.affected === 0) {
+        throw new NotFoundException(`User with ID ${id} not found`);
+      }
+      this.logger.log(`User with ID ${id} has been soft-deleted`);
+    } catch (error) {
+      this.logger.error(`Failed to soft-delete user with ID ${id}: ${error.message}`);
+      throw error;
+    }
+  }
+
   async findByUsername(username: string): Promise<UserDto | undefined> {
     try {
       return this.userRepository.findOne({ where: { username } });
@@ -62,51 +90,27 @@ export class UserService {
   }
 
   async getUserById(id: number): Promise<GetUserDto> {
-    try {
-      const user = await this.userRepository
-        .createQueryBuilder('user')
-        .select(['user.id', 'user.username', 'user.firstName', 'user.lastName']) // Указываем поля, которые нужно выбрать
-        .where({ id })
-        .getOne();
-
-      if (!user) {
-        new Error('User is not found');
-      }
-
-      const { id: userId, username, firstName, lastName } = user;
-
-      return {
-        id: userId,
-        username,
-        firstName,
-        lastName,
-      };
-    } catch (error) {
-      this.logger.error(`Error fetching user by ID: ${error.message}`);
-      throw error;
+    const user = await this.userRepository.createQueryBuilder('user').where({ id }).getOne();
+    if (!user) {
+      throw new Error('User is not found');
     }
+    return user;
   }
 
   async findAllWithPagination(
     page: number,
     limit: number,
-  ): Promise<{ users: GetUserDto[]; total: number; page: number; limit: number }> {
+  ): Promise<{ users: User[]; total: number; page: number; limit: number }> {
     try {
       const skip = (page - 1) * limit;
 
       const [users, total] = await this.userRepository
         .createQueryBuilder('user')
-        .select(['user.id', 'user.username', 'user.firstName', 'user.lastName']) // Указываем поля, которые нужно выбрать
         .skip(skip)
         .take(limit)
         .getManyAndCount();
 
-      const usersDto = users.map((user) => {
-        const { id, username, firstName, lastName } = user;
-        return { id, username, firstName, lastName };
-      });
-
-      return { users: usersDto, total, page, limit };
+      return { users, total, page, limit };
     } catch (error) {
       this.logger.error(`Error fetching users with pagination: ${error.message}`);
       throw error;

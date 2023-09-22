@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, Length } from 'class-validator';
+import { IsString, IsNotEmpty, Length, IsOptional, IsDateString } from 'class-validator';
 
 export class UserDto {
   id: number;
@@ -23,10 +23,15 @@ export class UserDto {
   @Length(6, 30)
   password: string;
 
-  constructor(username: string, firstName: string, lastName: string, password: string) {
-    this.username = username;
-    this.firstName = firstName;
-    this.lastName = lastName;
-    this.password = password;
-  }
+  @IsOptional()
+  @IsDateString()
+  created_at?: Date;
+
+  @IsOptional()
+  @IsDateString()
+  updated_at?: Date;
+
+  @IsOptional()
+  @IsDateString()
+  deleted_at?: Date;
 }
