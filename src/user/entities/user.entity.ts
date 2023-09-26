@@ -17,6 +17,13 @@ export class User {
   @Column()
   password: string;
 
+  @Column({
+    type: 'enum',
+    enum: ['admin', 'moderator'],
+    default: 'moderator',
+  })
+  role: string;
+
   @CreateDateColumn({ type: 'timestamp', select: false })
   created_at?: Date;
 
@@ -26,11 +33,12 @@ export class User {
   @DeleteDateColumn({ type: 'timestamp', nullable: true })
   deletedAt?: Date;
 
-  constructor(username: string, firstName: string, lastName: string, password: string) {
+  constructor(username: string, firstName: string, lastName: string, password: string, role: string) {
     this.username = username;
     this.firstName = firstName;
     this.lastName = lastName;
     this.password = password;
+    this.role = role;
     this.created_at = new Date();
     this.updated_at = new Date();
   }

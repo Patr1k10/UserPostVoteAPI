@@ -20,6 +20,8 @@ import { GetUserDto } from './dto/get-user.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { LastModifiedInterceptor } from '../interceptor/last-modified.interceptor';
 import { HideFieldsInterceptor } from '../interceptor/hideFields.interceptor';
+import { Roles } from '../decorator/roles.decorator';
+import { RolesGuard } from '../guard/roles.guard';
 
 @Controller('users')
 export class UserController {
@@ -31,7 +33,8 @@ export class UserController {
   }
 
   @Put(':id')
-  @UseGuards(AuthGuard('jwt'))
+  @Roles('admin')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   async updateUser(
     @Param('id') id: string,
     @Body() updateUserDto: GetUserDto,
@@ -58,7 +61,8 @@ export class UserController {
   }
 
   @Delete(':id')
-  @UseGuards(AuthGuard('jwt'))
+  @Roles('admin')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   async softDeleteUser(@Param('id') id: string): Promise<void> {
     await this.userService.softDeleteUser(Number(id));
   }

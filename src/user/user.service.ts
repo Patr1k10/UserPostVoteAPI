@@ -24,7 +24,7 @@ export class UserService {
 
       const existingUser = await this.userRepository.findOne({ where: { username: userDto.username } });
       if (existingUser) {
-        new ConflictException('Username already exists');
+        throw new ConflictException('Username already exists');
       }
 
       const user = new User(
@@ -32,6 +32,7 @@ export class UserService {
         userDto.firstName,
         userDto.lastName,
         await this.hashPassword(userDto.password),
+        userDto.role,
       );
 
       this.logger.log(`User created: ${JSON.stringify(user)}`);
