@@ -10,21 +10,27 @@ import * as dotenv from 'dotenv';
 import { PassportModule } from '@nestjs/passport';
 import { AuthController } from './user/auth.controller';
 import { JwtStrategy } from './guard/jwt.strategy';
+import { VoteController } from './vote/vote.controller';
+import { VoteService } from './vote/vote.service';
+import { Vote } from './vote/entities/vote.entity';
+import { LoggerModule } from 'nestjs-pino';
+import { AppConfig } from './app.config';
 
 dotenv.config();
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    LoggerModule.forRoot(AppConfig.getLoggerConfig()),
+
     JwtModule.register({
       secret: process.env.SECRET_KEY,
       signOptions: { expiresIn: '12h' },
     }),
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    TypeOrmModule.forFeature([User]),
     DatabaseModule,
+    TypeOrmModule.forFeature([User, Vote]),
   ],
-  controllers: [UserController, AuthController],
-  providers: [UserService, Logger, UserModule, JwtStrategy],
+  controllers: [UserController, AuthController, VoteController],
+  providers: [UserService, Logger, UserModule, JwtStrategy, VoteService],
 })
 export class AppModule {}

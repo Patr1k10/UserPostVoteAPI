@@ -28,6 +28,8 @@ export class UserDto {
   @IsIn(['admin', 'moderator'])
   role: string;
 
+  rating: number;
+
   @IsOptional()
   @IsDateString()
   created_at?: Date;

@@ -24,6 +24,9 @@ export class User {
   })
   role: string;
 
+  @Column({ default: 0 })
+  rating: number;
+
   @CreateDateColumn({ type: 'timestamp', select: false })
   created_at?: Date;
 

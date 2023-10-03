@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as crypto from 'crypto';
@@ -7,26 +7,27 @@ import { UserDto } from './dto/create-user.dto';
 import { UserUpdateDto } from './dto/update-user.dto';
 import { GetUserDto } from './dto/get-user.dto';
 import { JwtService } from '@nestjs/jwt';
+import { PinoLogger } from 'nestjs-pino';
 
 @Injectable()
 export class UserService {
-  private readonly logger = new Logger(UserService.name);
-
   constructor(
+    private readonly logger: PinoLogger,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly jwtService: JwtService,
-  ) {}
+  ) {
+    logger.setContext(UserService.name);
+  }
 
   async createUser(userDto: UserDto): Promise<User> {
     try {
-      this.logger.log(`Creating user: ${JSON.stringify(userDto)}`);
-
+      this.logger.info(`Attempting to create user: ${JSON.stringify(userDto)}`);
       const existingUser = await this.userRepository.findOne({ where: { username: userDto.username } });
       if (existingUser) {
+        this.logger.warn(`Username already exists: ${userDto.username}`);
         throw new ConflictException('Username already exists');
       }
-
       const user = new User(
         userDto.username,
         userDto.firstName,
@@ -34,49 +35,51 @@ export class UserService {
         await this.hashPassword(userDto.password),
         userDto.role,
       );
-
-      this.logger.log(`User created: ${JSON.stringify(user)}`);
-      return this.userRepository.save(user);
+      this.logger.info(`Successfully created user: ${JSON.stringify(user)}`);
+      return await this.userRepository.save(user);
     } catch (error) {
-      this.logger.error(`Error creating user: ${error.message}`);
+      this.logger.error(`Error occurred while creating user: ${error.message}`);
       throw error;
     }
   }
 
   async updateUser(id: number, updateUserDto: UserUpdateDto): Promise<User> {
     try {
+      this.logger.info(`Attempting to update user with ID: ${id}`);
       const user = await this.userRepository.findOne({ where: { id } });
       if (!user) {
-        throw new Error('User is not found');
+        this.logger.warn(`User not found with ID: ${id}`);
+        throw new NotFoundException('User not found');
       }
-
       if (updateUserDto.username) {
         const existingUser = await this.userRepository.findOne({ where: { username: updateUserDto.username } });
         if (existingUser && existingUser.id !== id) {
+          this.logger.warn(`Username already exists: ${updateUserDto.username}`);
           throw new ConflictException('Username already exists');
         }
       }
-
       if (updateUserDto.password) {
         updateUserDto.password = await this.hashPassword(updateUserDto.password);
       }
-
-      return this.userRepository.save({ ...user, ...updateUserDto });
+      this.logger.info(`Successfully updated user with ID: ${id}`);
+      return await this.userRepository.save({ ...user, ...updateUserDto });
     } catch (error) {
-      this.logger.error(`Error updating user: ${error.message}`);
+      this.logger.error(`Error occurred while updating user: ${error.message}`);
       throw error;
     }
   }
 
   async softDeleteUser(id: number): Promise<void> {
     try {
+      this.logger.info(`Attempting to soft-delete user with ID: ${id}`);
       const result = await this.userRepository.softDelete(id);
       if (result.affected === 0) {
+        this.logger.warn(`User not found with ID: ${id}`);
         throw new NotFoundException(`User with ID ${id} not found`);
       }
-      this.logger.log(`User with ID ${id} has been soft-deleted`);
+      this.logger.info(`Successfully soft-deleted user with ID: ${id}`);
     } catch (error) {
-      this.logger.error(`Failed to soft-delete user with ID ${id}: ${error.message}`);
+      this.logger.error(`Error occurred while soft-deleting user: ${error.message}`);
       throw error;
     }
   }
@@ -131,10 +134,10 @@ export class UserService {
 
   async validateUser(username: string, password: string): Promise<UserDto | null> {
     try {
-      this.logger.log(`Validating user with username: ${username}`);
+      this.logger.info(`Validating user with username: ${username}`);
       const user = await this.findByUsername(username);
       if (user && this.comparePasswords(password, user.password)) {
-        this.logger.log(`User validated: ${JSON.stringify(user)}`);
+        this.logger.info(`User validated: ${JSON.stringify(user)}`);
         return user;
       }
       return null;
@@ -146,10 +149,10 @@ export class UserService {
 
   async login(user: User): Promise<{ access_token: string }> {
     try {
-      this.logger.log(`Logging in user: ${user.username}`);
+      this.logger.info(`Logging in user: ${user.username}`);
       const payload = { username: user.username, sub: user.id };
       const accessToken = this.jwtService.sign(payload);
-      this.logger.log(`User logged in: ${user.username}`);
+      this.logger.info(`User logged in: ${user.username}`);
       return { access_token: accessToken };
     } catch (error) {
       this.logger.error(`Error logging in user: ${error.message}`);
