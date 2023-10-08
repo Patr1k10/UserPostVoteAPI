@@ -1,20 +1,21 @@
 import { CallHandler, ExecutionContext, NestInterceptor } from '@nestjs/common';
-import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { Observable } from 'rxjs';
 
 export class HideFieldsInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     return next.handle().pipe(
       map((data) => {
+        let transformedData = data;
         // Если это массив пользователей в поле 'users'
         if (data && data.users && Array.isArray(data.users)) {
           data.users = data.users.map((item) => this.transformObject(item));
         }
         // Если это отдельный пользователь
         else if (data && data.username) {
-          data = this.transformObject(data);
+          transformedData = this.transformObject(data);
         }
-        return data;
+        return transformedData;
       }),
     );
   }

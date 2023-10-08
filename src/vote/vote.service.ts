@@ -1,11 +1,14 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Vote } from './entities/vote.entity';
-import { User } from '../user/entities/user.entity';
-import { ProcessVoteDTO } from './dto/vote.dto';
 import { PinoLogger } from 'nestjs-pino';
+import { Repository } from 'typeorm';
+import { ProcessVoteDTO } from './dto/vote.dto';
 
+import { User } from '../entities/user.entity';
+import { Vote } from '../entities/vote.entity';
+
+@ApiTags('votes')
 @Injectable()
 export class VoteService {
   constructor(
@@ -19,7 +22,7 @@ export class VoteService {
     logger.setContext(VoteService.name);
   }
 
-  private async _checkLastVoted(existingVote: Vote): Promise<boolean> {
+  private async checkLastVoted(existingVote: Vote): Promise<boolean> {
     this.logger.info('Checking last voted time.');
     if (existingVote) {
       const dateNow = new Date();
@@ -33,11 +36,14 @@ export class VoteService {
     return true;
   }
 
+  @ApiOperation({ summary: 'Process a new vote' }) // Декоратор для описания операции в Swagger UI
+  @ApiResponse({ status: 201, description: 'The vote has been successfully processed.' })
+  @ApiResponse({ status: 400, description: 'Bad Request.' })
   async processVote(voteDto: ProcessVoteDTO): Promise<void> {
     this.logger.info('Processing a new vote.');
     const { fromUsername, toUsername, value } = voteDto;
     const existingVote = await this.voteRepository.findOne({ where: { fromUsername, toUsername } });
-    await this._checkLastVoted(existingVote);
+    await this.checkLastVoted(existingVote);
     if (existingVote) {
       this.logger.warn('User already voted.');
       throw new BadRequestException('User already voted');
@@ -54,11 +60,14 @@ export class VoteService {
     this.logger.info('Successfully processed a new vote.');
   }
 
+  @ApiOperation({ summary: 'Update an existing vote' })
+  @ApiResponse({ status: 200, description: 'The vote has been successfully updated.' })
+  @ApiResponse({ status: 400, description: 'Bad Request.' })
   async updateVote(voteDto: ProcessVoteDTO): Promise<void> {
     this.logger.info('Updating an existing vote.');
     const { fromUsername, toUsername, value } = voteDto;
     const existingVote = await this.voteRepository.findOne({ where: { fromUsername, toUsername } });
-    await this._checkLastVoted(existingVote);
+    await this.checkLastVoted(existingVote);
     if (!existingVote) {
       this.logger.warn('No existing vote to update.');
       throw new BadRequestException('No existing vote to update');
@@ -75,6 +84,9 @@ export class VoteService {
     this.logger.info('Successfully updated the vote.');
   }
 
+  @ApiOperation({ summary: 'Delete an existing vote' })
+  @ApiResponse({ status: 200, description: 'The vote has been successfully deleted.' })
+  @ApiResponse({ status: 400, description: 'Bad Request.' })
   async deleteVote(fromUsername: string, toUsername: string): Promise<void> {
     this.logger.info('Deleting an existing vote.');
     const existingVote = await this.voteRepository.findOne({ where: { fromUsername, toUsername } });
@@ -89,7 +101,7 @@ export class VoteService {
     }
     user.rating -= existingVote.value;
     await this.userRepository.save(user);
-    await this.voteRepository.remove(existingVote);
+    await this.voteRepository.softDelete(existingVote);
     this.logger.info('Successfully deleted the vote.');
   }
 }

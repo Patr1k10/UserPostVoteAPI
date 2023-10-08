@@ -1,0 +1,250 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/users/search": {
+      "get": {
+        "operationId": "UserController_findUsersByFields",
+        "summary": "Find users by various fields",
+        "parameters": [
+          {
+            "name": "id",
+            "required": false,
+            "in": "query",
+            "description": "The ID of the user",
+            "schema": { "type": "number" }
+          },
+          {
+            "name": "username",
+            "required": false,
+            "in": "query",
+            "description": "The username",
+            "schema": { "minLength": 3, "maxLength": 30, "type": "string" }
+          },
+          {
+            "name": "firstName",
+            "required": false,
+            "in": "query",
+            "description": "The first name",
+            "schema": { "minLength": 1, "maxLength": 30, "type": "string" }
+          },
+          {
+            "name": "lastName",
+            "required": false,
+            "in": "query",
+            "description": "The last name",
+            "schema": { "minLength": 1, "maxLength": 30, "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Users"]
+      }
+    },
+    "/users": {
+      "post": {
+        "operationId": "UserController_createUser",
+        "summary": "Create a new user",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateUserDto" } } }
+        },
+        "responses": { "201": { "description": "" } },
+        "tags": ["Users"]
+      },
+      "get": {
+        "operationId": "UserController_findAll",
+        "summary": "Get all users with pagination",
+        "parameters": [
+          {
+            "name": "page",
+            "required": true,
+            "in": "query",
+            "description": "Page number",
+            "schema": { "type": "number" }
+          },
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "description": "Limit number",
+            "schema": { "type": "number" }
+          }
+        ],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Users"]
+      }
+    },
+    "/users/{id}": {
+      "put": {
+        "operationId": "UserController_updateUser",
+        "summary": "Update an existing user by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID of user to update",
+            "schema": { "type": "string" }
+          },
+          { "name": "if-unmodified-since", "required": true, "in": "header", "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserUpdateDto" } } }
+        },
+        "responses": { "200": { "description": "" } },
+        "tags": ["Users"],
+        "security": [{ "bearer": [] }]
+      },
+      "get": {
+        "operationId": "UserController_getUserById",
+        "summary": "Get a user by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID of user to fetch",
+            "schema": { "type": "number" }
+          }
+        ],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Users"]
+      },
+      "delete": {
+        "operationId": "UserController_softDeleteUser",
+        "summary": "Soft-delete a user by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID of user to soft-delete",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Users"],
+        "security": [{ "bearer": [] }]
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "summary": "Login user",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "description": "User credentials",
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserAuthDto" } } }
+        },
+        "responses": {
+          "201": {
+            "description": "Successfully logged in",
+            "content": { "application/json": { "schema": { "type": "string" } } }
+          },
+          "401": { "description": "Unauthorized" }
+        },
+        "tags": ["Authentication"]
+      }
+    },
+    "/votes": {
+      "post": {
+        "operationId": "VoteController_createVote",
+        "summary": "Create a new vote",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProcessVoteDTO" } } }
+        },
+        "responses": {
+          "201": { "description": "The vote has been successfully created." },
+          "400": { "description": "Bad Request." }
+        },
+        "tags": ["votes"],
+        "security": [{ "bearer": [] }, { "bearer": [] }]
+      },
+      "put": {
+        "operationId": "VoteController_updateVote",
+        "summary": "Update an existing vote",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProcessVoteDTO" } } }
+        },
+        "responses": {
+          "200": { "description": "The vote has been successfully updated." },
+          "400": { "description": "Bad Request." }
+        },
+        "tags": ["votes"],
+        "security": [{ "bearer": [] }, { "bearer": [] }]
+      },
+      "delete": {
+        "operationId": "VoteController_deleteVote",
+        "summary": "Delete an existing vote",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProcessVoteDTO" } } }
+        },
+        "responses": {
+          "200": { "description": "The vote has been successfully deleted." },
+          "400": { "description": "Bad Request." }
+        },
+        "tags": ["votes"],
+        "security": [{ "bearer": [] }, { "bearer": [] }]
+      }
+    }
+  },
+  "info": { "title": "Example API", "description": "API description", "version": "1.0", "contact": {} },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": { "bearer": { "scheme": "bearer", "bearerFormat": "JWT", "type": "http" } },
+    "schemas": {
+      "CreateUserDto": {
+        "type": "object",
+        "properties": {
+          "username": { "type": "string", "description": "The username", "minLength": 3, "maxLength": 30 },
+          "firstName": {
+            "type": "string",
+            "description": "The first name of the user",
+            "minLength": 1,
+            "maxLength": 30
+          },
+          "lastName": { "type": "string", "description": "The last name of the user", "minLength": 1, "maxLength": 30 },
+          "password": { "type": "string", "description": "The password", "minLength": 6, "maxLength": 30 },
+          "role": { "type": "string", "description": "The role of the user", "enum": ["admin", "moderator"] }
+        },
+        "required": ["username", "firstName", "lastName", "password"]
+      },
+      "UserUpdateDto": {
+        "type": "object",
+        "properties": {
+          "username": { "type": "string", "description": "Updated username", "minLength": 3, "maxLength": 30 },
+          "firstName": { "type": "string", "description": "Updated first name", "minLength": 1, "maxLength": 30 },
+          "lastName": { "type": "string", "description": "Updated last name", "minLength": 1, "maxLength": 30 },
+          "password": { "type": "string", "description": "Updated password", "minLength": 6, "maxLength": 30 },
+          "role": { "type": "string", "description": "The role of the user", "enum": ["admin", "moderator"] }
+        }
+      },
+      "UserAuthDto": {
+        "type": "object",
+        "properties": {
+          "username": { "type": "string", "description": "The username", "minLength": 3, "maxLength": 30 },
+          "password": { "type": "string", "description": "The password", "minLength": 6, "maxLength": 30 }
+        },
+        "required": ["username", "password"]
+      },
+      "ProcessVoteDTO": {
+        "type": "object",
+        "properties": {
+          "fromUsername": { "type": "string", "description": "Username of the voter" },
+          "toUsername": { "type": "string", "description": "Username of the one being voted for" },
+          "value": { "type": "number", "description": "Value of the vote (-1 or 1)", "minimum": -1, "maximum": 1 }
+        },
+        "required": ["fromUsername", "toUsername", "value"]
+      }
+    }
+  }
+}

@@ -1,20 +1,22 @@
-import { Logger, Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { UserController } from './user/user.controller';
-import { UserService } from './user/user.service';
-import { User } from './user/entities/user.entity';
-import { DatabaseModule } from './db/database.module';
-import { UserModule } from './user/user.module';
-import { JwtModule } from '@nestjs/jwt';
 import * as dotenv from 'dotenv';
+import { JwtModule } from '@nestjs/jwt';
+import { Logger, Module } from '@nestjs/common';
+import { LoggerModule } from 'nestjs-pino';
 import { PassportModule } from '@nestjs/passport';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthController } from './user/auth.controller';
 import { JwtStrategy } from './guard/jwt.strategy';
+import { DatabaseModule } from './db/database.module';
+import { AppConfig } from './app.config';
+import { User } from './entities/user.entity';
+import { UserController } from './user/user.controller';
+import { UserModule } from './user/user.module';
+import { UserService } from './user/user.service';
+import { Vote } from './entities/vote.entity';
 import { VoteController } from './vote/vote.controller';
 import { VoteService } from './vote/vote.service';
-import { Vote } from './vote/entities/vote.entity';
-import { LoggerModule } from 'nestjs-pino';
-import { AppConfig } from './app.config';
+import { PostsModule } from './posts/posts.module';
+import { Post } from './entities/post.entity';
 
 dotenv.config();
 
@@ -28,7 +30,8 @@ dotenv.config();
     }),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     DatabaseModule,
-    TypeOrmModule.forFeature([User, Vote]),
+    TypeOrmModule.forFeature([User, Vote, Post]),
+    PostsModule,
   ],
   controllers: [UserController, AuthController, VoteController],
   providers: [UserService, Logger, UserModule, JwtStrategy, VoteService],

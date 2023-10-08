@@ -1,4 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, UpdateDateColumn, CreateDateColumn, DeleteDateColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  DeleteDateColumn,
+  Entity,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+import { Post } from './post.entity';
 
 @Entity()
 export class User {
@@ -26,6 +35,9 @@ export class User {
 
   @Column({ default: 0 })
   rating: number;
+
+  @OneToMany(() => Post, (post) => post.user)
+  posts: Promise<Post[]>;
 
   @CreateDateColumn({ type: 'timestamp', select: false })
   created_at?: Date;

@@ -1,45 +1,63 @@
-import {
-  Controller,
-  Post,
-  Body,
-  Put,
-  Param,
-  Get,
-  Query,
-  ParseIntPipe,
-  UseGuards,
-  BadRequestException,
-  Headers,
-  UseInterceptors,
-  Delete,
-} from '@nestjs/common';
-import { UserService } from './user.service';
-import { User } from './entities/user.entity';
-import { UserDto } from './dto/create-user.dto';
-import { GetUserDto } from './dto/get-user.dto';
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
-import { LastModifiedInterceptor } from '../interceptor/last-modified.interceptor';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Headers,
+  Param,
+  ParseIntPipe,
+  Post,
+  Put,
+  Query,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { CreateUserDto, UserUpdateDto } from './dto/user.dto';
 import { HideFieldsInterceptor } from '../interceptor/hideFields.interceptor';
+import { LastModifiedInterceptor } from '../interceptor/last-modified.interceptor';
 import { Roles } from '../decorator/roles.decorator';
 import { RolesGuard } from '../guard/roles.guard';
+import { UserService } from './user.service';
+import { GetUserByIdDto, GetUserDto } from './dto/get.user.dto';
+import { User } from '../entities/user.entity';
 
+@ApiTags('Users')
 @Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
+  @ApiOperation({ summary: 'Find users by various fields' })
+  @ApiQuery({ name: 'username', required: false })
+  @ApiQuery({ name: 'id', required: false })
+  @ApiQuery({ name: 'firstName', required: false })
+  @ApiQuery({ name: 'lastName', required: false })
+  @UseInterceptors(LastModifiedInterceptor)
+  @UseInterceptors(HideFieldsInterceptor)
+  @Get('search')
+  async findUsersByFields(@Query() query: GetUserDto): Promise<GetUserDto> {
+    return this.userService.findUserByFields(query);
+  }
+
+  @ApiOperation({ summary: 'Create a new user' })
   @Post()
-  async createUser(@Body() userDto: UserDto): Promise<UserDto> {
+  async createUser(@Body() userDto: CreateUserDto): Promise<CreateUserDto> {
     return this.userService.createUser(userDto);
   }
 
+  @ApiOperation({ summary: 'Update an existing user by ID' })
+  @ApiParam({ name: 'id', description: 'ID of user to update' })
+  @ApiBearerAuth()
   @Put(':id')
   @Roles('admin')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   async updateUser(
     @Param('id') id: string,
-    @Body() updateUserDto: GetUserDto,
+    @Body() updateUserDto: UserUpdateDto,
     @Headers('if-unmodified-since') ifUnmodifiedSince: string,
-  ): Promise<User> {
+  ): Promise<UserUpdateDto> {
     const user = await this.userService.getUserById(Number(id));
 
     if (ifUnmodifiedSince && new Date(ifUnmodifiedSince).getTime() !== new Date(user.updated_at).getTime()) {
@@ -48,18 +66,29 @@ export class UserController {
 
     return this.userService.updateUser(Number(id), updateUserDto);
   }
+
+  @ApiOperation({ summary: 'Get a user by ID' })
+  @ApiParam({ name: 'id', description: 'ID of user to fetch' })
   @UseInterceptors(LastModifiedInterceptor)
   @UseInterceptors(HideFieldsInterceptor)
   @Get(':id')
-  async getUserById(@Param() params: GetUserDto): Promise<GetUserDto> {
+  async getUserById(@Param() params?: GetUserByIdDto): Promise<GetUserDto> {
     return this.userService.getUserById(params.id);
   }
+
+  @ApiOperation({ summary: 'Get all users with pagination' })
+  @ApiQuery({ name: 'page', description: 'Page number' })
+  @ApiQuery({ name: 'limit', description: 'Limit number' })
   @UseInterceptors(HideFieldsInterceptor)
+  @UseInterceptors(LastModifiedInterceptor)
   @Get()
   findAll(@Query('page', ParseIntPipe) page: number = 1, @Query('limit', ParseIntPipe) limit: number = 10) {
     return this.userService.findAllWithPagination(page, limit);
   }
 
+  @ApiOperation({ summary: 'Soft-delete a user by ID' })
+  @ApiParam({ name: 'id', description: 'ID of user to soft-delete' })
+  @ApiBearerAuth()
   @Delete(':id')
   @Roles('admin')
   @UseGuards(AuthGuard('jwt'), RolesGuard)

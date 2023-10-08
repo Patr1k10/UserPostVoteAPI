@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { VoteService } from './vote.service';
-import { VoteController } from './vote.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { VoteController } from './vote.controller';
+import { VoteService } from './vote.service';
 
-import { Vote } from './entities/vote.entity';
-import { User } from '../user/entities/user.entity';
+import { User } from '../entities/user.entity';
+import { Vote } from '../entities/vote.entity';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Vote, User])],
