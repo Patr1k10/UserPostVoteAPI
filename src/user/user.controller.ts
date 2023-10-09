@@ -60,11 +60,9 @@ export class UserController {
     @Headers('if-unmodified-since') ifUnmodifiedSince: string,
   ): Promise<UserUpdateDto> {
     const user = await this.userService.getUserById(Number(id));
-
     if (ifUnmodifiedSince && new Date(ifUnmodifiedSince).getTime() !== new Date(user.updated_at).getTime()) {
       throw new BadRequestException('Resource has been modified');
     }
-
     return this.userService.updateUser(Number(id), updateUserDto);
   }
 

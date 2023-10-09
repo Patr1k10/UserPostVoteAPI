@@ -25,79 +25,55 @@ export class UserService {
 
   @ApiProperty({ description: 'Creates a new user' })
   async createUser(userDto: CreateUserDto): Promise<CreateUserDto> {
-    try {
-      this.logger.info(`Attempting to create user: ${JSON.stringify(userDto)}`);
-      const existingUser = await this.userRepository.findOne({ where: { username: userDto.username } });
-      if (existingUser) {
-        this.logger.warn(`Username already exists: ${userDto.username}`);
-        throw new ConflictException('Username already exists');
-      }
-      const user = new User(
-        userDto.username,
-        userDto.firstName,
-        userDto.lastName,
-        await this.hashPassword(userDto.password),
-        userDto.role,
-      );
-      this.logger.info(`Successfully created user: ${JSON.stringify(user)}`);
-      return await this.userRepository.save(user);
-    } catch (error) {
-      this.logger.error(`Error occurred while creating user: ${error.message}`);
-      throw error;
+    const existingUser = await this.userRepository.findOne({ where: { username: userDto.username } });
+    if (existingUser) {
+      throw new ConflictException('Username already exists');
     }
+    const hashedPassword = await this.hashPassword(userDto.password);
+    const user = this.userRepository.create({ ...userDto, password: hashedPassword });
+    return this.userRepository.save(user);
   }
 
   @ApiProperty({ description: 'Updates an existing user by ID' })
   async updateUser(id: number, updateUserDto: UserUpdateDto): Promise<UserUpdateDto> {
-    try {
-      this.logger.info(`Attempting to update user with ID: ${id}`);
-      const user = await this.userRepository.findOne({ where: { id } });
-      if (!user) {
-        this.logger.warn(`User not found with ID: ${id}`);
-        throw new NotFoundException('User not found');
-      }
-      if (updateUserDto.username) {
-        const existingUser = await this.userRepository.findOne({ where: { username: updateUserDto.username } });
-        if (existingUser && existingUser.id !== id) {
-          this.logger.warn(`Username already exists: ${updateUserDto.username}`);
-          throw new ConflictException('Username already exists');
-        }
-      }
-      if (updateUserDto.password) {
-        updateUserDto.password = await this.hashPassword(updateUserDto.password);
-      }
-      this.logger.info(`Successfully updated user with ID: ${id}`);
-      return await this.userRepository.save({ ...user, ...updateUserDto });
-    } catch (error) {
-      this.logger.error(`Error occurred while updating user: ${error.message}`);
-      throw error;
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      this.logger.warn(`User not found with ID: ${id}`);
+      throw new NotFoundException('User not found');
     }
+    if (updateUserDto.username) {
+      const existingUser = await this.userRepository.findOne({ where: { username: updateUserDto.username } });
+      if (existingUser && existingUser.id !== id) {
+        this.logger.warn(`Username already exists: ${updateUserDto.username}`);
+        throw new ConflictException('Username already exists');
+      }
+    }
+    if (updateUserDto.password) {
+      updateUserDto.password = await this.hashPassword(updateUserDto.password);
+    }
+    this.logger.info(`Successfully updated user with ID: ${id}`);
+    return this.userRepository.save({ ...user, ...updateUserDto });
   }
 
   @ApiProperty({ description: 'Soft-deletes a user by ID' })
   async softDeleteUser(id: number): Promise<void> {
-    try {
-      this.logger.info(`Attempting to soft-delete user with ID: ${id}`);
-      const result = await this.userRepository.softDelete(id);
-      if (result.affected === 0) {
-        this.logger.warn(`User not found with ID: ${id}`);
-        throw new NotFoundException(`User with ID ${id} not found`);
-      }
-      this.logger.info(`Successfully soft-deleted user with ID: ${id}`);
-    } catch (error) {
-      this.logger.error(`Error occurred while soft-deleting user: ${error.message}`);
-      throw error;
+    this.logger.info(`Attempting to soft-delete user with ID: ${id}`);
+    const result = await this.userRepository.softDelete(id);
+    if (result.affected === 0) {
+      this.logger.warn(`User not found with ID: ${id}`);
+      throw new NotFoundException(`User with ID ${id} not found`);
     }
+    this.logger.info(`Successfully soft-deleted user with ID: ${id}`);
   }
 
   @ApiProperty({ description: 'Finds a user by username' })
   async findByUsername(username: string): Promise<GetUserDto | undefined> {
-    try {
-      return await this.userRepository.findOne({ where: { username } });
-    } catch (error) {
-      this.logger.error(`Error finding user by username: ${error.message}`);
-      throw error;
+    const user = await this.userRepository.findOne({ where: { username } });
+    if (!user) {
+      this.logger.error(`User not found with username: ${username}`);
+      throw new NotFoundException(`User with username ${username} not found`);
     }
+    return user;
   }
 
   @ApiProperty({ description: 'Gets a user by ID' })
@@ -112,16 +88,12 @@ export class UserService {
 
   @ApiProperty({ description: 'Finds a user by various fields' })
   async findUserByFields(query: GetUserDto): Promise<GetUserDto> {
-    try {
-      const user = await this.userRepository.findOne({ where: query });
-      if (!user) {
-        throw new NotFoundException('No user found matching the given criteria');
-      }
-      return user;
-    } catch (error) {
-      this.logger.error(`Error finding user by fields: ${error.message}`);
-      throw error;
+    const user = await this.userRepository.findOne({ where: query });
+    if (!user) {
+      this.logger.error('No user found matching the given criteria');
+      throw new NotFoundException('No user found matching the given criteria');
     }
+    return user;
   }
 
   @ApiProperty({ description: 'Finds all users with pagination' })
@@ -129,20 +101,19 @@ export class UserService {
     page: number,
     limit: number,
   ): Promise<{ users: User[]; total: number; page: number; limit: number }> {
-    try {
-      const skip = (page - 1) * limit;
+    const skip = (page - 1) * limit;
+    const [users, total] = await this.userRepository
+      .createQueryBuilder('user')
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
 
-      const [users, total] = await this.userRepository
-        .createQueryBuilder('user')
-        .skip(skip)
-        .take(limit)
-        .getManyAndCount();
-
-      return { users, total, page, limit };
-    } catch (error) {
-      this.logger.error(`Error fetching users with pagination: ${error.message}`);
-      throw error;
+    if (!users.length) {
+      this.logger.error('No users found with the given pagination settings');
+      throw new NotFoundException('No users found');
     }
+
+    return { users, total, page, limit };
   }
 
   private async hashPassword(password: string): Promise<string> {
@@ -172,25 +143,18 @@ export class UserService {
   }
 
   @ApiProperty({ description: 'Login user' })
+  @ApiProperty({ description: 'Login user' })
   async login(user: UserAuthDto): Promise<{ access_token: string }> {
-    try {
-      this.logger.info(`Logging in user: ${user.username}`);
-
-      // Убедитесь, что user.id доступен и валиден
-      if (!user.id || typeof user.id !== 'number' || Number.isNaN(user.id)) {
-        this.logger.error(`Invalid user ID: ${user.id}`);
-        throw new BadRequestException('Invalid user ID');
-      }
-
-      const payload = { sub: user.id, username: user.username };
-      const accessToken = this.jwtService.sign(payload);
-
-      this.logger.info(`User logged in: ${user.username}`);
-      return { access_token: accessToken };
-    } catch (error) {
-      this.logger.error(`Error logging in user: ${error.message}`);
-      throw error;
+    if (!user.id || typeof user.id !== 'number' || Number.isNaN(user.id)) {
+      this.logger.error(`Invalid user ID: ${user.id}`);
+      throw new BadRequestException('Invalid user ID');
     }
+
+    const payload = { sub: user.id, username: user.username };
+    const accessToken = this.jwtService.sign(payload);
+    this.logger.info(`User logged in: ${user.username}`);
+
+    return { access_token: accessToken };
   }
 
   private comparePasswords(password: string, userPasswordHash: string): boolean {

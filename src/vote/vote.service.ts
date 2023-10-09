@@ -1,12 +1,13 @@
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PinoLogger } from 'nestjs-pino';
 import { Repository } from 'typeorm';
 import { ProcessVoteDTO } from './dto/vote.dto';
-
 import { User } from '../entities/user.entity';
 import { Vote } from '../entities/vote.entity';
+import { Post } from '../entities/post.entity';
+import { IRatable } from '../interface/rateble.interface';
 
 @ApiTags('votes')
 @Injectable()
@@ -18,8 +19,32 @@ export class VoteService {
     private readonly voteRepository: Repository<Vote>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Post)
+    private readonly postRepository: Repository<Post>,
   ) {
     logger.setContext(VoteService.name);
+  }
+
+  private async getRatableEntity(entityType: string, entityId: number): Promise<IRatable> {
+    let entity: IRatable = null;
+
+    switch (entityType) {
+      case 'User':
+        entity = await this.userRepository.findOne({ where: { id: entityId } });
+        break;
+      case 'Post':
+        entity = await this.postRepository.findOne({ where: { id: entityId } });
+        break;
+      default:
+        this.logger.warn(`Unknown entity type: ${entityType}`);
+        throw new BadRequestException(`Unknown entity type: ${entityType}`);
+    }
+
+    if (!entity) {
+      this.logger.warn(`Entity not found. Type: ${entityType}, ID: ${entityId}`);
+      throw new BadRequestException(`Entity not found. Type: ${entityType}, ID: ${entityId}`);
+    }
+    return entity;
   }
 
   private async checkLastVoted(existingVote: Vote): Promise<boolean> {
@@ -36,72 +61,84 @@ export class VoteService {
     return true;
   }
 
-  @ApiOperation({ summary: 'Process a new vote' }) // Декоратор для описания операции в Swagger UI
-  @ApiResponse({ status: 201, description: 'The vote has been successfully processed.' })
-  @ApiResponse({ status: 400, description: 'Bad Request.' })
-  async processVote(voteDto: ProcessVoteDTO): Promise<void> {
+  @ApiOperation({ summary: 'Process a new vote' })
+  async processVote(voteDto: ProcessVoteDTO, userId: number): Promise<void> {
+    if (userId === voteDto.fromUserId) {
+      throw new BadRequestException("You can't vote for yourself");
+    }
+    voteDto.fromUserId = userId;
     this.logger.info('Processing a new vote.');
-    const { fromUsername, toUsername, value } = voteDto;
-    const existingVote = await this.voteRepository.findOne({ where: { fromUsername, toUsername } });
+    const { entityType, entityId, value, fromUserId } = voteDto;
+    const existingVote = await this.voteRepository.findOne({ where: { fromUserId, entityType, entityId } });
     await this.checkLastVoted(existingVote);
     if (existingVote) {
       this.logger.warn('User already voted.');
       throw new BadRequestException('User already voted');
     }
-    const user = await this.userRepository.findOne({ where: { username: toUsername } });
-    if (!user) {
-      this.logger.warn('User not found.');
-      throw new BadRequestException('User not found');
+    const entity = await this.getRatableEntity(entityType, entityId);
+    if (!entity) {
+      this.logger.warn('Entity not found.');
+      throw new BadRequestException('Entity not found');
     }
-    user.rating += value;
-    await this.userRepository.save(user);
-    const newVote = this.voteRepository.create({ fromUsername, toUsername, value });
+    entity.rating += value;
+    await this.saveEntity(entityType, entity);
+    const newVote = this.voteRepository.create({ fromUserId, entityType, entityId, value });
     await this.voteRepository.save(newVote);
     this.logger.info('Successfully processed a new vote.');
   }
 
   @ApiOperation({ summary: 'Update an existing vote' })
-  @ApiResponse({ status: 200, description: 'The vote has been successfully updated.' })
-  @ApiResponse({ status: 400, description: 'Bad Request.' })
-  async updateVote(voteDto: ProcessVoteDTO): Promise<void> {
+  async updateVote(voteDto: ProcessVoteDTO, userId: number): Promise<void> {
+    if (userId === voteDto.fromUserId) {
+      throw new BadRequestException("You can't vote for yourself");
+    }
     this.logger.info('Updating an existing vote.');
-    const { fromUsername, toUsername, value } = voteDto;
-    const existingVote = await this.voteRepository.findOne({ where: { fromUsername, toUsername } });
+    const { entityType, entityId, value, fromUserId } = voteDto;
+    const existingVote = await this.voteRepository.findOne({ where: { fromUserId, entityType, entityId } });
     await this.checkLastVoted(existingVote);
     if (!existingVote) {
       this.logger.warn('No existing vote to update.');
       throw new BadRequestException('No existing vote to update');
     }
-    const user = await this.userRepository.findOne({ where: { username: toUsername } });
-    if (!user) {
-      this.logger.warn('User not found.');
-      throw new BadRequestException('User not found');
+    const entity = await this.getRatableEntity(entityType, entityId);
+    if (!entity) {
+      this.logger.warn('Entity not found.');
+      throw new BadRequestException('Entity not found');
     }
-    user.rating = user.rating - existingVote.value + value;
-    await this.userRepository.save(user);
+    entity.rating = entity.rating - existingVote.value + value;
+    await this.saveEntity(entityType, entity);
     existingVote.value = value;
     await this.voteRepository.save(existingVote);
     this.logger.info('Successfully updated the vote.');
   }
 
   @ApiOperation({ summary: 'Delete an existing vote' })
-  @ApiResponse({ status: 200, description: 'The vote has been successfully deleted.' })
-  @ApiResponse({ status: 400, description: 'Bad Request.' })
-  async deleteVote(fromUsername: string, toUsername: string): Promise<void> {
+  async deleteVote(fromUserId: number, entityType: string, entityId: number, userId: number): Promise<void> {
+    if (userId === fromUserId) {
+      throw new BadRequestException("You can't delete a vote for yourself");
+    }
     this.logger.info('Deleting an existing vote.');
-    const existingVote = await this.voteRepository.findOne({ where: { fromUsername, toUsername } });
+    const existingVote = await this.voteRepository.findOne({ where: { fromUserId, entityType, entityId } });
     if (!existingVote) {
       this.logger.warn('No existing vote to delete.');
       throw new BadRequestException('No existing vote to delete');
     }
-    const user = await this.userRepository.findOne({ where: { username: toUsername } });
-    if (!user) {
-      this.logger.warn('User not found.');
-      throw new BadRequestException('User not found');
+    const entity = await this.getRatableEntity(entityType, entityId);
+    if (!entity) {
+      this.logger.warn('Entity not found.');
+      throw new BadRequestException('Entity not found');
     }
-    user.rating -= existingVote.value;
-    await this.userRepository.save(user);
+    entity.rating -= existingVote.value;
+    await this.saveEntity(entityType, entity);
     await this.voteRepository.softDelete(existingVote);
     this.logger.info('Successfully deleted the vote.');
+  }
+
+  private async saveEntity(entityType: string, entity: IRatable): Promise<void> {
+    if (entityType === 'Post') {
+      await this.postRepository.save(entity);
+    } else if (entityType === 'User') {
+      await this.userRepository.save(entity);
+    }
   }
 }

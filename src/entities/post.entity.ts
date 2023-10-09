@@ -9,9 +9,10 @@ import {
   DeleteDateColumn,
 } from 'typeorm';
 import { User } from './user.entity';
+import { IRatable } from '../interface/rateble.interface';
 
 @Entity()
-export class Post {
+export class Post implements IRatable {
   @PrimaryGeneratedColumn('increment')
   id: number;
 

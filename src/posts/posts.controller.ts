@@ -1,7 +1,6 @@
 import { Controller, Post, Get, Body, UseGuards, Query, Param, Patch, Delete } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
-import { PinoLogger } from 'nestjs-pino';
 import { PostsService } from './posts.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { GetUser } from '../decorator/getUser.decorator';
@@ -11,12 +10,7 @@ import { UpdatePostDto } from './dto/update-post.dto';
 @ApiTags('Posts')
 @Controller('posts')
 export class PostsController {
-  constructor(
-    private readonly logger: PinoLogger,
-    private readonly postsService: PostsService,
-  ) {
-    logger.setContext(PostsController.name);
-  }
+  constructor(private readonly postsService: PostsService) {}
 
   @ApiOperation({ summary: 'Create a new post' })
   @ApiResponse({ status: 201, description: 'The post has been successfully created.' })
@@ -32,6 +26,7 @@ export class PostsController {
   @ApiResponse({ status: 200, description: 'Return all posts.' })
   @ApiQuery({ name: 'page', required: false, description: 'Page number', type: Number })
   @ApiQuery({ name: 'limit', required: false, description: 'Limit number of posts per page', type: Number })
+  @ApiBearerAuth()
   @Get()
   @UseGuards(AuthGuard('jwt'))
   async findAllMayPosts(
@@ -42,6 +37,9 @@ export class PostsController {
     return this.postsService.findAllMayPosts(user, page, limit);
   }
 
+  @ApiOperation({ summary: 'Find post by ID' })
+  @ApiResponse({ status: 200, description: 'Post found.' })
+  @ApiResponse({ status: 404, description: 'Post not found.' })
   @Get(':id')
   async findOne(@Param('id') id: number) {
     return this.postsService.getPostById(id);

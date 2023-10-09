@@ -8,9 +8,10 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Post } from './post.entity';
+import { IRatable } from '../interface/rateble.interface';
 
 @Entity()
-export class User {
+export class User implements IRatable {
   @PrimaryGeneratedColumn('increment')
   id: number;
 
