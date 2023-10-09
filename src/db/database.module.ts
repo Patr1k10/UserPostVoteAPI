@@ -1,6 +1,6 @@
+import * as dotenv from 'dotenv';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import * as dotenv from 'dotenv';
 import config from './database.config';
 
 dotenv.config();

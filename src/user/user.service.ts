@@ -1,116 +1,119 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import * as crypto from 'crypto';
-import { User } from './entities/user.entity';
-import { UserDto } from './dto/create-user.dto';
-import { UserUpdateDto } from './dto/update-user.dto';
-import { GetUserDto } from './dto/get-user.dto';
+import { ApiProperty, ApiTags } from '@nestjs/swagger';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
+import { PinoLogger } from 'nestjs-pino';
+import { Repository } from 'typeorm';
+import { UserUpdateDto } from './dto/updateUser.dto';
+import { User } from '../entities/user.entity';
+import { GetUserDto } from './dto/get.user.dto';
+import { CreateUserDto } from './dto/createUser.dto';
+import { UserAuthDto } from './dto/authUser.dto';
 
+@ApiTags('Users')
 @Injectable()
 export class UserService {
-  private readonly logger = new Logger(UserService.name);
-
   constructor(
+    private readonly logger: PinoLogger,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly jwtService: JwtService,
-  ) {}
-
-  async createUser(userDto: UserDto): Promise<User> {
-    try {
-      this.logger.log(`Creating user: ${JSON.stringify(userDto)}`);
-      const user = new User(
-        userDto.username,
-        userDto.firstName,
-        userDto.lastName,
-        await this.hashPassword(userDto.password),
-      );
-      this.logger.log(`User created: ${JSON.stringify(user)}`);
-      return this.userRepository.save(user);
-    } catch (error) {
-      this.logger.error(`Error creating user: ${error.message}`);
-      throw error;
-    }
+  ) {
+    logger.setContext(UserService.name);
   }
 
-  async updateUser(id: number, updateUserDto: UserUpdateDto): Promise<User> {
-    try {
-      const user = await this.userRepository.findOne({ where: { id } });
-      if (!user) {
-        new Error('User is not found');
+  @ApiProperty({ description: 'Creates a new user' })
+  async createUser(userDto: CreateUserDto): Promise<CreateUserDto> {
+    const existingUser = await this.userRepository.findOne({ where: { username: userDto.username } });
+    if (existingUser) {
+      throw new ConflictException('Username already exists');
+    }
+    const hashedPassword = await this.hashPassword(userDto.password);
+    const user = this.userRepository.create({ ...userDto, password: hashedPassword });
+    return this.userRepository.save(user);
+  }
+
+  @ApiProperty({ description: 'Updates an existing user by ID' })
+  async updateUser(id: number, updateUserDto: UserUpdateDto): Promise<UserUpdateDto> {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      this.logger.warn(`User not found with ID: ${id}`);
+      throw new NotFoundException('User not found');
+    }
+    if (updateUserDto.username) {
+      const existingUser = await this.userRepository.findOne({ where: { username: updateUserDto.username } });
+      if (existingUser && existingUser.id !== id) {
+        this.logger.warn(`Username already exists: ${updateUserDto.username}`);
+        throw new ConflictException('Username already exists');
       }
-
-      if (updateUserDto.password) {
-        updateUserDto.password = await this.hashPassword(updateUserDto.password);
-      }
-
-      return this.userRepository.save({ ...user, ...updateUserDto });
-    } catch (error) {
-      this.logger.error(`Error updating user: ${error.message}`);
-      throw error;
     }
-  }
-  async findByUsername(username: string): Promise<UserDto | undefined> {
-    try {
-      return this.userRepository.findOne({ where: { username } });
-    } catch (error) {
-      this.logger.error(`Error finding user by username: ${error.message}`);
-      throw error;
+    if (updateUserDto.password) {
+      updateUserDto.password = await this.hashPassword(updateUserDto.password);
     }
+    this.logger.info(`Successfully updated user with ID: ${id}`);
+    return this.userRepository.save({ ...user, ...updateUserDto });
   }
 
+  @ApiProperty({ description: 'Soft-deletes a user by ID' })
+  async softDeleteUser(id: number): Promise<void> {
+    this.logger.info(`Attempting to soft-delete user with ID: ${id}`);
+    const result = await this.userRepository.softDelete(id);
+    if (result.affected === 0) {
+      this.logger.warn(`User not found with ID: ${id}`);
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+    this.logger.info(`Successfully soft-deleted user with ID: ${id}`);
+  }
+
+  @ApiProperty({ description: 'Finds a user by username' })
+  async findByUsername(username: string): Promise<GetUserDto | undefined> {
+    const user = await this.userRepository.findOne({ where: { username } });
+    if (!user) {
+      this.logger.error(`User not found with username: ${username}`);
+      throw new NotFoundException(`User with username ${username} not found`);
+    }
+    return user;
+  }
+
+  @ApiProperty({ description: 'Gets a user by ID' })
   async getUserById(id: number): Promise<GetUserDto> {
-    try {
-      const user = await this.userRepository
-        .createQueryBuilder('user')
-        .select(['user.id', 'user.username', 'user.firstName', 'user.lastName']) // Указываем поля, которые нужно выбрать
-        .where({ id })
-        .getOne();
-
-      if (!user) {
-        new Error('User is not found');
-      }
-
-      const { id: userId, username, firstName, lastName } = user;
-
-      return {
-        id: userId,
-        username,
-        firstName,
-        lastName,
-      };
-    } catch (error) {
-      this.logger.error(`Error fetching user by ID: ${error.message}`);
-      throw error;
+    const user = await this.userRepository.createQueryBuilder('user').where({ id }).getOne();
+    if (!user) {
+      throw new Error('User is not found');
     }
+    this.logger.info(`Successfully fetched user with ID: ${id}`);
+    return user;
   }
 
+  @ApiProperty({ description: 'Finds a user by various fields' })
+  async findUserByFields(query: GetUserDto): Promise<GetUserDto> {
+    const user = await this.userRepository.findOne({ where: query });
+    if (!user) {
+      this.logger.error('No user found matching the given criteria');
+      throw new NotFoundException('No user found matching the given criteria');
+    }
+    return user;
+  }
+
+  @ApiProperty({ description: 'Finds all users with pagination' })
   async findAllWithPagination(
     page: number,
     limit: number,
-  ): Promise<{ users: GetUserDto[]; total: number; page: number; limit: number }> {
-    try {
-      const skip = (page - 1) * limit;
+  ): Promise<{ users: User[]; total: number; page: number; limit: number }> {
+    const skip = (page - 1) * limit;
+    const [users, total] = await this.userRepository
+      .createQueryBuilder('user')
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
 
-      const [users, total] = await this.userRepository
-        .createQueryBuilder('user')
-        .select(['user.id', 'user.username', 'user.firstName', 'user.lastName']) // Указываем поля, которые нужно выбрать
-        .skip(skip)
-        .take(limit)
-        .getManyAndCount();
-
-      const usersDto = users.map((user) => {
-        const { id, username, firstName, lastName } = user;
-        return { id, username, firstName, lastName };
-      });
-
-      return { users: usersDto, total, page, limit };
-    } catch (error) {
-      this.logger.error(`Error fetching users with pagination: ${error.message}`);
-      throw error;
+    if (!users.length) {
+      this.logger.error('No users found with the given pagination settings');
+      throw new NotFoundException('No users found');
     }
+
+    return { users, total, page, limit };
   }
 
   private async hashPassword(password: string): Promise<string> {
@@ -124,12 +127,12 @@ export class UserService {
     }
   }
 
-  async validateUser(username: string, password: string): Promise<UserDto | null> {
+  async validateUser(username: string, password: string): Promise<UserAuthDto | null> {
     try {
-      this.logger.log(`Validating user with username: ${username}`);
+      this.logger.info(`Validating user with username: ${username}`);
       const user = await this.findByUsername(username);
       if (user && this.comparePasswords(password, user.password)) {
-        this.logger.log(`User validated: ${JSON.stringify(user)}`);
+        this.logger.info(`User validated: ${JSON.stringify(user)}`);
         return user;
       }
       return null;
@@ -139,17 +142,19 @@ export class UserService {
     }
   }
 
-  async login(user: User): Promise<{ access_token: string }> {
-    try {
-      this.logger.log(`Logging in user: ${user.username}`);
-      const payload = { username: user.username, sub: user.id };
-      const accessToken = this.jwtService.sign(payload);
-      this.logger.log(`User logged in: ${user.username}`);
-      return { access_token: accessToken };
-    } catch (error) {
-      this.logger.error(`Error logging in user: ${error.message}`);
-      throw error;
+  @ApiProperty({ description: 'Login user' })
+  @ApiProperty({ description: 'Login user' })
+  async login(user: UserAuthDto): Promise<{ access_token: string }> {
+    if (!user.id || typeof user.id !== 'number' || Number.isNaN(user.id)) {
+      this.logger.error(`Invalid user ID: ${user.id}`);
+      throw new BadRequestException('Invalid user ID');
     }
+
+    const payload = { sub: user.id, username: user.username };
+    const accessToken = this.jwtService.sign(payload);
+    this.logger.info(`User logged in: ${user.username}`);
+
+    return { access_token: accessToken };
   }
 
   private comparePasswords(password: string, userPasswordHash: string): boolean {
