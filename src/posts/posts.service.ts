@@ -6,6 +6,8 @@ import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { Post } from '../entities/post.entity';
 import { CreatePostDto } from './dto/create-post.dto';
+import { GetUserDto } from '../user/dto/get.user.dto';
+import { UpdatePostDto } from './dto/update-post.dto';
 
 @ApiTags('Posts')
 @Injectable()
@@ -21,26 +23,25 @@ export class PostsService {
   }
 
   @ApiProperty({ description: 'Create posts' })
-  async create(createPostDto: CreatePostDto): Promise<Post> {
-    const { username } = createPostDto;
-
+  async create(user: GetUserDto, createPostDto: CreatePostDto): Promise<Post> {
     try {
-      if (!username) {
-        this.logger.error(`Invalid username: ${username}`);
-        throw new BadRequestException('Invalid username');
+      if (!user || !user.username) {
+        this.logger.error('Invalid user or username');
+        throw new BadRequestException('Invalid user or username');
       }
 
-      this.logger.info(`Username: ${username}`);
-      this.logger.info(`Attempting to create post: ${JSON.stringify(createPostDto)}`);
+      this.logger.info(`Username from JWT: ${user.username}`);
 
-      const user = await this.userRepository.findOne({ where: { username: username } });
-      if (!user) {
-        this.logger.warn(`User not found with username: ${username}`);
+      const userFromDB = await this.userRepository.findOne({ where: { username: user.username } });
+      if (!userFromDB) {
+        this.logger.warn(`User not found with username: ${user.username}`);
         throw new NotFoundException('User not found');
       }
 
+      createPostDto.username = user.username;
+
       const post = this.postRepository.create(createPostDto);
-      post.user = Promise.resolve(user);
+      post.user = Promise.resolve(userFromDB);
 
       this.logger.info(`Successfully created post`);
       return await this.postRepository.save(post);
@@ -50,30 +51,85 @@ export class PostsService {
     }
   }
 
-  @ApiProperty({ description: 'Gets all posts' })
-  async findAll(): Promise<Post[]> {
-    try {
-      this.logger.info('Fetching all posts');
-      return await this.postRepository.find();
-    } catch (error) {
-      this.logger.error(`Error occurred while fetching all posts: ${error.message}`);
-      throw error;
+  async findAllMayPosts(user: GetUserDto, page: number = 1, limit: number = 10) {
+    // Проверяем, есть ли пользователь
+    if (!user || !user.username) {
+      this.logger.error(`Invalid user`);
+      throw new Error('Invalid user');
     }
+
+    // Найти пользователя в базе данных
+    const userFromDb = await this.userRepository.findOne({ where: { username: user.username } });
+
+    if (!userFromDb) {
+      this.logger.warn(`User not found with username: ${user.username}`);
+      throw new NotFoundException('User not found');
+    }
+
+    // Получить посты с пагинацией и сортировкой
+    const [posts, total] = await this.postRepository.findAndCount({
+      where: { user: { id: userFromDb.id } }, // связь с пользователем
+      take: limit, // сколько записей на одну страницу
+      skip: (page - 1) * limit, // смещение
+      order: {
+        created_at: 'DESC', // сортировка по убыванию даты создания
+      },
+    });
+
+    return {
+      data: posts,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async getPostById(id: number): Promise<Post> {
+    const post = await this.postRepository.findOne({ where: { id } });
+    if (!post) {
+      throw new NotFoundException(`Post with id ${id} not found`);
+    }
+    return post;
   }
 
   @ApiProperty({ description: 'Updates a post by ID' })
-  async update(id: number, updatePostDto: CreatePostDto): Promise<void> {
+  async update(user: GetUserDto, id: number, updatePostDto: UpdatePostDto): Promise<Post> {
     try {
-      this.logger.info(`Attempting to update post with ID: ${id}`);
-
-      const post = await this.postRepository.findOne({ where: { id } });
-      if (!post) {
-        this.logger.warn(`Post not found with ID: ${id}`);
-        throw new NotFoundException('Post not found');
+      if (!user || !user.username) {
+        this.logger.error('Invalid user or username');
+        throw new BadRequestException('Invalid user or username');
       }
 
-      this.logger.info(`Successfully updated post with ID: ${id}`);
-      await this.postRepository.update(id, updatePostDto);
+      const userFromDB = await this.userRepository.findOne({ where: { username: user.username } });
+      if (!userFromDB) {
+        this.logger.warn(`User not found with username: ${user.username}`);
+        throw new NotFoundException('User not found');
+      }
+
+      const post = await this.postRepository.findOne({
+        where: {
+          id,
+          user: { id: userFromDB.id },
+        },
+      });
+
+      if (!post) {
+        this.logger.warn(`Post not found with id: ${id}`);
+        throw new NotFoundException(`Post with id ${id} not found`);
+      }
+
+      if (updatePostDto.title) {
+        post.title = updatePostDto.title;
+      }
+
+      if (updatePostDto.content) {
+        post.content = updatePostDto.content;
+      }
+
+      await this.postRepository.save(post);
+      this.logger.info(`Successfully updated post with id ${id}`);
+      return post;
     } catch (error) {
       this.logger.error(`Error occurred while updating post: ${error.message}`);
       throw error;
@@ -96,5 +152,37 @@ export class PostsService {
       this.logger.error(`Error occurred while deleting post: ${error.message}`);
       throw error;
     }
+  }
+
+  async softDeletePost(id: number, user: GetUserDto): Promise<void> {
+    // Проверяем, есть ли пользователь
+    if (!user || !user.username) {
+      this.logger.error(`Invalid user`);
+      throw new Error('Invalid user');
+    }
+
+    // Найти пользователя в базе данных
+    const userFromDb = await this.userRepository.findOne({ where: { username: user.username } });
+
+    if (!userFromDb) {
+      this.logger.warn(`User not found with username: ${user.username}`);
+      throw new NotFoundException('User not found');
+    }
+
+    // Найти пост с указанным ID и принадлежащий пользователю
+    const post = await this.postRepository.findOne({
+      where: {
+        id,
+        user: { id: userFromDb.id }, // используем ID пользователя для фильтрации
+      },
+    });
+
+    if (!post) {
+      this.logger.warn(`Post not found with id: ${id}`);
+      throw new NotFoundException('Post not found');
+    }
+
+    // Мягкое удаление поста
+    await this.postRepository.softDelete(post.id);
   }
 }

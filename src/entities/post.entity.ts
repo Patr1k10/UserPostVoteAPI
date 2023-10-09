@@ -28,10 +28,10 @@ export class Post {
   @JoinColumn({ name: 'user_id' })
   user: Promise<User>;
 
-  @CreateDateColumn({ type: 'timestamp', select: false })
+  @CreateDateColumn({ type: 'timestamp' })
   created_at?: Date;
 
-  @UpdateDateColumn({ type: 'timestamp', select: false })
+  @UpdateDateColumn({ type: 'timestamp' })
   updated_at?: Date;
 
   @DeleteDateColumn({ type: 'timestamp', nullable: true })
