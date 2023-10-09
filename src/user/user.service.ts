@@ -5,9 +5,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { PinoLogger } from 'nestjs-pino';
 import { Repository } from 'typeorm';
-import { CreateUserDto, UserAuthDto, UserUpdateDto } from './dto/user.dto';
+import { UserUpdateDto } from './dto/updateUser.dto';
 import { User } from '../entities/user.entity';
 import { GetUserDto } from './dto/get.user.dto';
+import { CreateUserDto } from './dto/createUser.dto';
+import { UserAuthDto } from './dto/authUser.dto';
 
 @ApiTags('Users')
 @Injectable()
@@ -175,7 +177,7 @@ export class UserService {
       this.logger.info(`Logging in user: ${user.username}`);
 
       // Убедитесь, что user.id доступен и валиден
-      if (!user.id || typeof user.id !== 'number' || isNaN(user.id)) {
+      if (!user.id || typeof user.id !== 'number' || Number.isNaN(user.id)) {
         this.logger.error(`Invalid user ID: ${user.id}`);
         throw new BadRequestException('Invalid user ID');
       }

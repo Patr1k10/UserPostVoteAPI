@@ -15,14 +15,15 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { CreateUserDto, UserUpdateDto } from './dto/user.dto';
+import { UserUpdateDto } from './dto/updateUser.dto';
 import { HideFieldsInterceptor } from '../interceptor/hideFields.interceptor';
 import { LastModifiedInterceptor } from '../interceptor/last-modified.interceptor';
 import { Roles } from '../decorator/roles.decorator';
 import { RolesGuard } from '../guard/roles.guard';
 import { UserService } from './user.service';
-import { GetUserByIdDto, GetUserDto } from './dto/get.user.dto';
-import { User } from '../entities/user.entity';
+import { GetUserDto } from './dto/get.user.dto';
+import { GetUserByIdDto } from './dto/get.userById.dto';
+import { CreateUserDto } from './dto/createUser.dto';
 
 @ApiTags('Users')
 @Controller('users')

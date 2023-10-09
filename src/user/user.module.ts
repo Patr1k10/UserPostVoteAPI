@@ -7,7 +7,6 @@ import { UserController } from './user.controller';
 import { UserService } from './user.service';
 import { Post } from '../entities/post.entity';
 import { Vote } from '../entities/vote.entity';
-import { AppModule } from '../app.module';
 
 dotenv.config();
 

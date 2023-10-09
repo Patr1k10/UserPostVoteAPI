@@ -38,9 +38,3 @@ export class GetUserDto {
   @Exclude()
   deleted_at?: Date;
 }
-export class GetUserByIdDto {
-  @ApiProperty({ description: 'The ID of the user' })
-  @IsNumber()
-  @IsNotEmpty()
-  readonly id: number;
-}

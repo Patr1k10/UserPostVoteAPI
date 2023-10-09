@@ -19,8 +19,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: JwtPayload): Promise<any> {
     const userId = parseInt(payload.sub as string, 10);
 
-    if (isNaN(userId) || userId <= 0) {
-      console.log(`Invalid user ID in JWT payload: ${payload.sub}`);
+    if (Number.isNaN(userId) || userId <= 0) {
       throw new UnauthorizedException('Invalid JWT payload');
     }
 
