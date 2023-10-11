@@ -5,11 +5,15 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { PinoLogger } from 'nestjs-pino';
 import { Repository } from 'typeorm';
+import axios from 'axios';
+import * as dotenv from 'dotenv';
 import { UserUpdateDto } from './dto/updateUser.dto';
 import { User } from '../entities/user.entity';
 import { GetUserDto } from './dto/get.user.dto';
 import { CreateUserDto } from './dto/createUser.dto';
 import { UserAuthDto } from './dto/authUser.dto';
+
+dotenv.config();
 
 @ApiTags('Users')
 @Injectable()
@@ -164,6 +168,32 @@ export class UserService {
       return userHash === derivedKey;
     } catch (error) {
       this.logger.error(`Error comparing passwords: ${error.message}`);
+      throw error;
+    }
+  }
+
+  @ApiProperty({ description: 'Get signed URL for avatar upload' })
+  async getSignedUrl(user: GetUserDto): Promise<string> {
+    try {
+      const userId = user.id;
+      const response = await axios.post(process.env.URL_API_LAMBDA, { userId });
+      return response.data.uploadUrl;
+    } catch (error) {
+      this.logger.error(`Error getting signed URL: ${error.message}`);
+      throw error;
+    }
+  }
+
+  @ApiProperty({ description: 'Upload avatar' })
+  async uploadAvatar(uploadUrl: string, fileBuffer: Buffer, mimeType: string): Promise<void> {
+    try {
+      await axios.put(uploadUrl, fileBuffer, {
+        headers: {
+          'Content-Type': mimeType,
+        },
+      });
+    } catch (error) {
+      this.logger.error(`Error uploading avatar: ${error.message}`);
       throw error;
     }
   }

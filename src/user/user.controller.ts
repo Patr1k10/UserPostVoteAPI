@@ -12,9 +12,11 @@ import {
   Post,
   Put,
   Query,
+  UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { UserUpdateDto } from './dto/updateUser.dto';
 import { HideFieldsInterceptor } from '../interceptor/hideFields.interceptor';
 import { LastModifiedInterceptor } from '../interceptor/last-modified.interceptor';
@@ -24,6 +26,7 @@ import { UserService } from './user.service';
 import { GetUserDto } from './dto/get.user.dto';
 import { GetUserByIdDto } from './dto/get.userById.dto';
 import { CreateUserDto } from './dto/createUser.dto';
+import { GetUser } from '../decorator/getUser.decorator';
 
 @ApiTags('Users')
 @Controller('users')
@@ -93,5 +96,24 @@ export class UserController {
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   async softDeleteUser(@Param('id') id: string): Promise<void> {
     await this.userService.softDeleteUser(Number(id));
+  }
+
+  @ApiOperation({ summary: 'Get a signed URL for avatar upload' })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  @Post('getSignedUrl')
+  async getSignedUrl(@GetUser() user: GetUserDto): Promise<{ uploadUrl: string }> {
+    const uploadUrl = await this.userService.getSignedUrl(user);
+    return { uploadUrl };
+  }
+
+  @ApiOperation({ summary: 'Upload avatar' })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  @Post('uploadAvatar')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadAvatar(@UploadedFile() file, @Body('uploadUrl') uploadUrl: string): Promise<{ message: string }> {
+    await this.userService.uploadAvatar(uploadUrl, file.buffer, file.mimetype);
+    return { message: 'Avatar uploaded successfully' };
   }
 }

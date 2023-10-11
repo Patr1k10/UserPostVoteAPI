@@ -27,6 +27,9 @@ export class User implements IRatable {
   @Column()
   password: string;
 
+  @Column({ type: 'text', nullable: true })
+  avatarUrl?: string;
+
   @Column({
     type: 'enum',
     enum: ['admin', 'moderator'],
