@@ -5,7 +5,7 @@ import { JwtPayload } from 'jsonwebtoken';
 import { PassportStrategy } from '@nestjs/passport';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { User } from '../entities/user.entity';
+import { User } from '../entities/users.entity';
 
 dotenv.config();
 

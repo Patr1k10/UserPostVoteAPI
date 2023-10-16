@@ -24,7 +24,7 @@ export class HideFieldsInterceptor implements NestInterceptor {
     const newObj = { ...obj };
     delete newObj.password;
     delete newObj.created_at;
-    delete newObj.updated_at;
+
     delete newObj.deleted_at;
     return newObj;
   }

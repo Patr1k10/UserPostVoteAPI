@@ -3,9 +3,9 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth.controller';
-import { User } from '../entities/user.entity';
-import { UserController } from './user.controller';
-import { UserService } from './user.service';
+import { User } from '../entities/users.entity';
+import { UsersController } from './users.controller';
+import { UsersService } from './users.service';
 import { Post } from '../entities/post.entity';
 import { Vote } from '../entities/vote.entity';
 import { AuthModule } from '../guard/auth.module';
@@ -21,8 +21,8 @@ dotenv.config();
       signOptions: { expiresIn: '12h' },
     }),
   ],
-  controllers: [UserController, AuthController],
-  providers: [UserService],
-  exports: [UserService],
+  controllers: [UsersController, AuthController],
+  providers: [UsersService, UsersService],
+  exports: [UsersService],
 })
-export class UserModule {}
+export class UsersModule {}

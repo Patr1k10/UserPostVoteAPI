@@ -5,17 +5,19 @@ import {
   Entity,
   OneToMany,
   PrimaryGeneratedColumn,
+  Unique,
   UpdateDateColumn,
 } from 'typeorm';
 import { Post } from './post.entity';
 import { IRatable } from '../interface/rateble.interface';
 
+@Unique(['username', 'deleted_at'])
 @Entity()
 export class User implements IRatable {
   @PrimaryGeneratedColumn('increment')
   id: number;
 
-  @Column({ unique: true })
+  @Column()
   username: string;
 
   @Column()
@@ -41,7 +43,7 @@ export class User implements IRatable {
   rating: number;
 
   @OneToMany(() => Post, (post) => post.user)
-  posts: Promise<Post[]>;
+  posts?: Promise<Post[]>;
 
   @CreateDateColumn({ type: 'timestamp', select: false })
   created_at?: Date;
@@ -50,7 +52,7 @@ export class User implements IRatable {
   updated_at?: Date;
 
   @DeleteDateColumn({ type: 'timestamp', nullable: true })
-  deletedAt?: Date;
+  deleted_at?: Date | null;
 
   constructor(username: string, firstName: string, lastName: string, password: string, role: string) {
     this.username = username;

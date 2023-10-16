@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { PinoLogger } from 'nestjs-pino';
 import { Repository } from 'typeorm';
 import { ProcessVoteDTO } from './dto/vote.dto';
-import { User } from '../entities/user.entity';
+import { User } from '../entities/users.entity';
 import { Vote } from '../entities/vote.entity';
 import { Post } from '../entities/post.entity';
 import { IRatable } from '../interface/rateble.interface';

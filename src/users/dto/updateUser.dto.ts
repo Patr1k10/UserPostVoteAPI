@@ -26,7 +26,7 @@ export class UserUpdateDto {
   @Length(6, 30)
   password: string;
 
-  @ApiPropertyOptional({ description: 'The role of the user', enum: ['admin', 'moderator'] })
+  @ApiPropertyOptional({ description: 'The role of the users', enum: ['admin', 'moderator'] })
   @IsOptional()
   @IsString()
   @IsIn(['admin', 'moderator'])

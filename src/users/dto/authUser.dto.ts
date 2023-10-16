@@ -14,5 +14,5 @@ export class UserAuthDto {
   @Length(6, 30)
   password?: string;
 
-  id: number;
+  id?: number;
 }

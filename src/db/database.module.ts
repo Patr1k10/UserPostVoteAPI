@@ -1,7 +1,7 @@
-import * as dotenv from 'dotenv';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import config from './database.config';
+import * as dotenv from 'dotenv';
+import config from './typeorm.config';
 
 dotenv.config();
 

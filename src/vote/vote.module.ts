@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { VoteController } from './vote.controller';
 import { VoteService } from './vote.service';
 
-import { User } from '../entities/user.entity';
+import { User } from '../entities/users.entity';
 import { Vote } from '../entities/vote.entity';
 import { Post } from '../entities/post.entity';
 import { JwtStrategy } from '../guard/jwt.strategy';

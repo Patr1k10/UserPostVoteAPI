@@ -1,6 +1,12 @@
 import * as crypto from 'crypto';
 import { ApiProperty, ApiTags } from '@nestjs/swagger';
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { PinoLogger } from 'nestjs-pino';
@@ -8,7 +14,7 @@ import { Repository } from 'typeorm';
 import axios from 'axios';
 import * as dotenv from 'dotenv';
 import { UserUpdateDto } from './dto/updateUser.dto';
-import { User } from '../entities/user.entity';
+import { User } from '../entities/users.entity';
 import { GetUserDto } from './dto/get.user.dto';
 import { CreateUserDto } from './dto/createUser.dto';
 import { UserAuthDto } from './dto/authUser.dto';
@@ -17,19 +23,24 @@ dotenv.config();
 
 @ApiTags('Users')
 @Injectable()
-export class UserService {
+export class UsersService {
   constructor(
     private readonly logger: PinoLogger,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly jwtService: JwtService,
   ) {
-    logger.setContext(UserService.name);
+    logger.setContext(UsersService.name);
   }
 
-  @ApiProperty({ description: 'Creates a new user' })
+  @ApiProperty({ description: 'Creates a new users' })
   async createUser(userDto: CreateUserDto): Promise<CreateUserDto> {
-    const existingUser = await this.userRepository.findOne({ where: { username: userDto.username } });
+    const existingUser = await this.userRepository.findOne({
+      where: {
+        username: userDto.username,
+      },
+    });
+
     if (existingUser) {
       throw new ConflictException('Username already exists');
     }
@@ -38,13 +49,21 @@ export class UserService {
     return this.userRepository.save(user);
   }
 
-  @ApiProperty({ description: 'Updates an existing user by ID' })
-  async updateUser(id: number, updateUserDto: UserUpdateDto): Promise<UserUpdateDto> {
+  @ApiProperty({ description: 'Updates an existing users by ID' })
+  async updateUser(id: number, updateUserDto: UserUpdateDto, ifUnmodifiedSince?: string): Promise<UserUpdateDto> {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
       this.logger.warn(`User not found with ID: ${id}`);
       throw new NotFoundException('User not found');
     }
+    if (
+      ifUnmodifiedSince &&
+      Math.floor(new Date(ifUnmodifiedSince).getTime() / 1000) !==
+        Math.floor(new Date(user.updated_at).getTime() / 1000)
+    ) {
+      throw new BadRequestException('Resource has been modified');
+    }
+
     if (updateUserDto.username) {
       const existingUser = await this.userRepository.findOne({ where: { username: updateUserDto.username } });
       if (existingUser && existingUser.id !== id) {
@@ -59,7 +78,7 @@ export class UserService {
     return this.userRepository.save({ ...user, ...updateUserDto });
   }
 
-  @ApiProperty({ description: 'Soft-deletes a user by ID' })
+  @ApiProperty({ description: 'Soft-deletes a users by ID' })
   async softDeleteUser(id: number): Promise<void> {
     this.logger.info(`Attempting to soft-delete user with ID: ${id}`);
     const result = await this.userRepository.softDelete(id);
@@ -70,9 +89,13 @@ export class UserService {
     this.logger.info(`Successfully soft-deleted user with ID: ${id}`);
   }
 
-  @ApiProperty({ description: 'Finds a user by username' })
+  @ApiProperty({ description: 'Finds a users by username' })
   async findByUsername(username: string): Promise<GetUserDto | undefined> {
     const user = await this.userRepository.findOne({ where: { username } });
+    if (!username || typeof username !== 'string' || username.length === 0) {
+      this.logger.error(`Invalid username: ${username}`);
+      throw new BadRequestException('Invalid username');
+    }
     if (!user) {
       this.logger.error(`User not found with username: ${username}`);
       throw new NotFoundException(`User with username ${username} not found`);
@@ -80,22 +103,25 @@ export class UserService {
     return user;
   }
 
-  @ApiProperty({ description: 'Gets a user by ID' })
+  @ApiProperty({ description: 'Gets a users by ID' })
   async getUserById(id: number): Promise<GetUserDto> {
     const user = await this.userRepository.createQueryBuilder('user').where({ id }).getOne();
     if (!user) {
       throw new Error('User is not found');
     }
+    if (!user.id || typeof user.id !== 'number' || Number.isNaN(user.id)) {
+      throw new BadRequestException('Invalid user ID');
+    }
     this.logger.info(`Successfully fetched user with ID: ${id}`);
     return user;
   }
 
-  @ApiProperty({ description: 'Finds a user by various fields' })
+  @ApiProperty({ description: 'Finds a users by various fields' })
   async findUserByFields(query: GetUserDto): Promise<GetUserDto> {
     const user = await this.userRepository.findOne({ where: query });
     if (!user) {
-      this.logger.error('No user found matching the given criteria');
-      throw new NotFoundException('No user found matching the given criteria');
+      this.logger.error('No users found matching the given criteria');
+      throw new NotFoundException('No users found matching the given criteria');
     }
     return user;
   }
@@ -120,7 +146,7 @@ export class UserService {
     return { users, total, page, limit };
   }
 
-  private async hashPassword(password: string): Promise<string> {
+  async hashPassword(password: string): Promise<string> {
     try {
       const salt = crypto.randomBytes(16).toString('hex');
       const derivedKey = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
@@ -132,26 +158,27 @@ export class UserService {
   }
 
   async validateUser(username: string, password: string): Promise<UserAuthDto | null> {
-    try {
-      this.logger.info(`Validating user with username: ${username}`);
-      const user = await this.findByUsername(username);
-      if (user && this.comparePasswords(password, user.password)) {
-        this.logger.info(`User validated: ${JSON.stringify(user)}`);
-        return user;
-      }
-      return null;
-    } catch (error) {
-      this.logger.error(`Error validating user: ${error.message}`);
-      throw error;
+    const user = await this.findByUsername(username);
+
+    if (user && this.comparePasswords(password, user.password)) {
+      this.logger.info(`User validated: ${JSON.stringify(user)}`);
+      return user;
     }
+    throw new UnauthorizedException('Invalid credentials');
   }
 
-  @ApiProperty({ description: 'Login user' })
-  @ApiProperty({ description: 'Login user' })
-  async login(user: UserAuthDto): Promise<{ access_token: string }> {
+  @ApiProperty({ description: 'Login users' })
+  async login(userDto: UserAuthDto): Promise<{ access_token: string }> {
+    const user = await this.validateUser(userDto.username, userDto.password);
+
+    if (!user) {
+      this.logger.error('Invalid credentials');
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
     if (!user.id || typeof user.id !== 'number' || Number.isNaN(user.id)) {
       this.logger.error(`Invalid user ID: ${user.id}`);
-      throw new BadRequestException('Invalid user ID');
+      throw new BadRequestException('Invalid users ID');
     }
 
     const payload = { sub: user.id, username: user.username };
@@ -161,7 +188,7 @@ export class UserService {
     return { access_token: accessToken };
   }
 
-  private comparePasswords(password: string, userPasswordHash: string): boolean {
+  comparePasswords(password: string, userPasswordHash: string): boolean {
     try {
       const [salt, userHash] = userPasswordHash.split(':');
       const derivedKey = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');

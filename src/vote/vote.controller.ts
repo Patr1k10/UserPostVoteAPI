@@ -4,7 +4,7 @@ import { BadRequestException, Body, Controller, Delete, Post, Put, UseGuards } f
 import { GetUser } from '../decorator/getUser.decorator';
 import { VoteService } from './vote.service';
 import { ProcessVoteDTO } from './dto/vote.dto';
-import { GetUserDto } from '../user/dto/get.user.dto';
+import { GetUserDto } from '../users/dto/get.user.dto';
 
 @ApiTags('votes')
 @ApiBearerAuth()

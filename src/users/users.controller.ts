@@ -1,7 +1,6 @@
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -22,7 +21,7 @@ import { HideFieldsInterceptor } from '../interceptor/hideFields.interceptor';
 import { LastModifiedInterceptor } from '../interceptor/last-modified.interceptor';
 import { Roles } from '../decorator/roles.decorator';
 import { RolesGuard } from '../guard/roles.guard';
-import { UserService } from './user.service';
+import { UsersService } from './users.service';
 import { GetUserDto } from './dto/get.user.dto';
 import { GetUserByIdDto } from './dto/get.userById.dto';
 import { CreateUserDto } from './dto/createUser.dto';
@@ -30,29 +29,17 @@ import { GetUser } from '../decorator/getUser.decorator';
 
 @ApiTags('Users')
 @Controller('users')
-export class UserController {
-  constructor(private readonly userService: UserService) {}
+export class UsersController {
+  constructor(private readonly userService: UsersService) {}
 
-  @ApiOperation({ summary: 'Find users by various fields' })
-  @ApiQuery({ name: 'username', required: false })
-  @ApiQuery({ name: 'id', required: false })
-  @ApiQuery({ name: 'firstName', required: false })
-  @ApiQuery({ name: 'lastName', required: false })
-  @UseInterceptors(LastModifiedInterceptor)
-  @UseInterceptors(HideFieldsInterceptor)
-  @Get('search')
-  async findUsersByFields(@Query() query: GetUserDto): Promise<GetUserDto> {
-    return this.userService.findUserByFields(query);
-  }
-
-  @ApiOperation({ summary: 'Create a new user' })
+  @ApiOperation({ summary: 'Create a new users' })
   @Post()
   async createUser(@Body() userDto: CreateUserDto): Promise<CreateUserDto> {
     return this.userService.createUser(userDto);
   }
 
-  @ApiOperation({ summary: 'Update an existing user by ID' })
-  @ApiParam({ name: 'id', description: 'ID of user to update' })
+  @ApiOperation({ summary: 'Update an existing users by ID' })
+  @ApiParam({ name: 'id', description: 'ID of users to update' })
   @ApiBearerAuth()
   @Put(':id')
   @Roles('admin')
@@ -62,15 +49,11 @@ export class UserController {
     @Body() updateUserDto: UserUpdateDto,
     @Headers('if-unmodified-since') ifUnmodifiedSince: string,
   ): Promise<UserUpdateDto> {
-    const user = await this.userService.getUserById(Number(id));
-    if (ifUnmodifiedSince && new Date(ifUnmodifiedSince).getTime() !== new Date(user.updated_at).getTime()) {
-      throw new BadRequestException('Resource has been modified');
-    }
-    return this.userService.updateUser(Number(id), updateUserDto);
+    return this.userService.updateUser(Number(id), updateUserDto, ifUnmodifiedSince);
   }
 
-  @ApiOperation({ summary: 'Get a user by ID' })
-  @ApiParam({ name: 'id', description: 'ID of user to fetch' })
+  @ApiOperation({ summary: 'Get a users by ID' })
+  @ApiParam({ name: 'id', description: 'ID of users to fetch' })
   @UseInterceptors(LastModifiedInterceptor)
   @UseInterceptors(HideFieldsInterceptor)
   @Get(':id')
@@ -84,12 +67,12 @@ export class UserController {
   @UseInterceptors(HideFieldsInterceptor)
   @UseInterceptors(LastModifiedInterceptor)
   @Get()
-  findAll(@Query('page', ParseIntPipe) page: number = 1, @Query('limit', ParseIntPipe) limit: number = 10) {
+  async findAll(@Query('page', ParseIntPipe) page: number = 1, @Query('limit', ParseIntPipe) limit: number = 10) {
     return this.userService.findAllWithPagination(page, limit);
   }
 
-  @ApiOperation({ summary: 'Soft-delete a user by ID' })
-  @ApiParam({ name: 'id', description: 'ID of user to soft-delete' })
+  @ApiOperation({ summary: 'Soft-delete a users by ID' })
+  @ApiParam({ name: 'id', description: 'ID of users to soft-delete' })
   @ApiBearerAuth()
   @Delete(':id')
   @Roles('admin')
@@ -115,5 +98,17 @@ export class UserController {
   async uploadAvatar(@UploadedFile() file, @Body('uploadUrl') uploadUrl: string): Promise<{ message: string }> {
     await this.userService.uploadAvatar(uploadUrl, file.buffer, file.mimetype);
     return { message: 'Avatar uploaded successfully' };
+  }
+
+  @ApiOperation({ summary: 'Find users by various fields' })
+  @ApiQuery({ name: 'username', required: false })
+  @ApiQuery({ name: 'id', required: false })
+  @ApiQuery({ name: 'firstName', required: false })
+  @ApiQuery({ name: 'lastName', required: false })
+  @UseInterceptors(LastModifiedInterceptor)
+  @UseInterceptors(HideFieldsInterceptor)
+  @Get('search')
+  async findUsersByFields(@Query() query: GetUserDto): Promise<GetUserDto> {
+    return this.userService.findUserByFields(query);
   }
 }

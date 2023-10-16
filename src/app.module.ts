@@ -1,28 +1,29 @@
-import * as dotenv from 'dotenv';
 import { Logger, Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
-import { EventEmitter2, EventEmitterModule } from '@nestjs/event-emitter';
+import { ConfigModule } from '@nestjs/config';
+import { transformAndValidateSync } from 'class-transformer-validator';
 import { DatabaseModule } from './db/database.module';
 import { AppConfig } from './app.config';
-import { UserModule } from './user/user.module';
+import { UsersModule } from './users/users.module';
 import { PostsModule } from './posts/posts.module';
 import { VoteModule } from './vote/vote.module';
 import { AuthModule } from './guard/auth.module';
-
-dotenv.config();
+import { Environment } from './config/environment';
 
 @Module({
   imports: [
-    EventEmitterModule.forRoot(),
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
     LoggerModule.forRoot(AppConfig.getLoggerConfig()),
     DatabaseModule,
     PostsModule,
-    UserModule,
+    UsersModule,
     VoteModule,
     AuthModule,
   ],
   controllers: [],
-  providers: [Logger, EventEmitter2],
-  exports: [EventEmitter2],
+  providers: [Logger, { provide: Environment, useValue: transformAndValidateSync(Environment, process.env) }],
+  exports: [],
 })
 export class AppModule {}

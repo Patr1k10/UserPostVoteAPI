@@ -8,7 +8,7 @@ import {
   JoinColumn,
   DeleteDateColumn,
 } from 'typeorm';
-import { User } from './user.entity';
+import { User } from './users.entity';
 import { IRatable } from '../interface/rateble.interface';
 
 @Entity()

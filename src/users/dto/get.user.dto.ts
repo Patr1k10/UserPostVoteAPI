@@ -3,7 +3,7 @@ import { IsNotEmpty, IsNumber, IsString, Length } from 'class-validator';
 import { Exclude } from 'class-transformer';
 
 export class GetUserDto {
-  @ApiProperty({ description: 'The ID of the user' })
+  @ApiProperty({ description: 'The ID of the users' })
   @IsNumber()
   @IsNotEmpty()
   readonly id: number;
@@ -26,11 +26,13 @@ export class GetUserDto {
   @Length(1, 30)
   lastName?: string;
 
+  role?: string;
+
   @Exclude()
   updated_at?: Date;
 
   @Exclude()
-  password: string;
+  password?: string;
 
   @Exclude()
   created_at?: Date;
