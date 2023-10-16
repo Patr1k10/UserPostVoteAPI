@@ -1,5 +1,6 @@
-import { IsString, IsInt, IsBoolean, IsUrl } from 'class-validator';
+import { IsString, IsInt, IsUrl, IsBoolean } from 'class-validator';
 import { Injectable } from '@nestjs/common';
+import { Type } from 'class-transformer';
 
 @Injectable()
 export class Environment {
@@ -9,6 +10,8 @@ export class Environment {
   @IsString()
   DATABASE_HOST: string;
 
+  @Type(() => Number)
+  @IsInt()
   DATABASE_PORT: number;
 
   @IsString()
@@ -17,6 +20,8 @@ export class Environment {
   @IsString()
   DATABASE_PASSWORD: string;
 
+  @Type(() => Boolean)
+  @IsBoolean()
   DATABASE_SYNCHRONIZE: boolean;
 
   @IsString()
@@ -34,5 +39,7 @@ export class Environment {
   @IsUrl()
   URL_API_LAMBDA: string;
 
+  @Type(() => Number)
+  @IsInt()
   PORT: number;
 }
