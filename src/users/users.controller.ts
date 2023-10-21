@@ -67,7 +67,7 @@ export class UsersController {
   @UseInterceptors(HideFieldsInterceptor)
   @UseInterceptors(LastModifiedInterceptor)
   @Get()
-  async findAll(@Query('page', ParseIntPipe) page: number = 1, @Query('limit', ParseIntPipe) limit: number = 10) {
+  async findAll(@Query('page', ParseIntPipe) page = 1, @Query('limit', ParseIntPipe) limit = 10) {
     return this.userService.findAllWithPagination(page, limit);
   }
 

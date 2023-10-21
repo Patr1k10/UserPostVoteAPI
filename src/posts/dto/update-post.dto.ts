@@ -1,6 +1,8 @@
 import { IsString, IsOptional, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { Field, InputType } from '@nestjs/graphql';
 
+@InputType() // Добавьте декоратор InputType к классу
 export class UpdatePostDto {
   @ApiProperty({
     description: 'Title of the post',
@@ -12,6 +14,7 @@ export class UpdatePostDto {
   @IsString()
   @IsOptional()
   @MaxLength(500)
+  @Field({ nullable: true }) // Укажите nullable: true, чтобы это поле могло быть null
   title?: string;
 
   @ApiProperty({
@@ -22,5 +25,6 @@ export class UpdatePostDto {
   })
   @IsString()
   @IsOptional()
+  @Field({ nullable: true }) // Укажите nullable: true, чтобы это поле могло быть null
   content?: string;
 }

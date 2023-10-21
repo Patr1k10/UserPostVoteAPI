@@ -1,5 +1,5 @@
 import { ApiBody, ApiOperation, ApiResponse, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
-import { Body, Controller, Post, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Post } from '@nestjs/common';
 
 import { UsersService } from './users.service';
 import { UserAuthDto } from './dto/authUser.dto';

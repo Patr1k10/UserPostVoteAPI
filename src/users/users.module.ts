@@ -9,6 +9,7 @@ import { UsersService } from './users.service';
 import { Post } from '../entities/post.entity';
 import { Vote } from '../entities/vote.entity';
 import { AuthModule } from '../guard/auth.module';
+import { UserResolver } from './users.resolver';
 
 dotenv.config();
 
@@ -22,7 +23,7 @@ dotenv.config();
     }),
   ],
   controllers: [UsersController, AuthController],
-  providers: [UsersService, UsersService],
+  providers: [UsersService, UsersService, UserResolver],
   exports: [UsersService],
 })
 export class UsersModule {}

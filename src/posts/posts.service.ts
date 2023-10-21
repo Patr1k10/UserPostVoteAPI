@@ -45,7 +45,7 @@ export class PostsService {
   }
 
   @ApiOperation({ summary: 'Get all posts by page' })
-  async findAllMayPosts(user: GetUserDto, page: number = 1, limit: number = 10) {
+  async findAllMayPosts(user: GetUserDto, page = 1, limit = 10) {
     const userFromDB = await this.validateUserAndGetFromDB(user);
     const [posts, total] = await this.postRepository.findAndCount({
       where: { user: { id: userFromDB.id } },

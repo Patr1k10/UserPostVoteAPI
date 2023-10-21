@@ -8,6 +8,7 @@ import { User } from '../entities/users.entity';
 import { Vote } from '../entities/vote.entity';
 import { Post } from '../entities/post.entity';
 import { IRatable } from '../interface/rateble.interface';
+import { GetUserDto } from '../users/dto/get.user.dto';
 
 @ApiTags('votes')
 @Injectable()
@@ -51,7 +52,7 @@ export class VoteService {
     this.logger.info('Checking last voted time.');
     if (existingVote) {
       const dateNow = new Date();
-      const lastVoteDate = new Date(existingVote.updatedAt);
+      const lastVoteDate = new Date(existingVote.updated_at);
       if (Math.abs(dateNow.getTime() - lastVoteDate.getTime()) < 3600000) {
         this.logger.warn('Vote rejected due to time constraint.');
         throw new BadRequestException('You need to wait one hour from your last vote to proceed.');
@@ -62,11 +63,11 @@ export class VoteService {
   }
 
   @ApiOperation({ summary: 'Process a new vote' })
-  async processVote(voteDto: ProcessVoteDTO, userId: number): Promise<void> {
-    if (userId === voteDto.fromUserId) {
+  async processVote(voteDto: ProcessVoteDTO, user: GetUserDto): Promise<void> {
+    if (user.id === voteDto.fromUserId) {
       throw new BadRequestException("You can't vote for yourself");
     }
-    voteDto.fromUserId = userId;
+    voteDto.fromUserId = user.id;
     this.logger.info('Processing a new vote.');
     const { entityType, entityId, value, fromUserId } = voteDto;
     const existingVote = await this.voteRepository.findOne({ where: { fromUserId, entityType, entityId } });
@@ -88,8 +89,8 @@ export class VoteService {
   }
 
   @ApiOperation({ summary: 'Update an existing vote' })
-  async updateVote(voteDto: ProcessVoteDTO, userId: number): Promise<void> {
-    if (userId === voteDto.fromUserId) {
+  async updateVote(voteDto: ProcessVoteDTO, user: GetUserDto): Promise<void> {
+    if (user.id === voteDto.fromUserId) {
       throw new BadRequestException("You can't vote for yourself");
     }
     this.logger.info('Updating an existing vote.');
@@ -113,23 +114,26 @@ export class VoteService {
   }
 
   @ApiOperation({ summary: 'Delete an existing vote' })
-  async deleteVote(fromUserId: number, entityType: string, entityId: number, userId: number): Promise<void> {
-    if (userId === fromUserId) {
+  async deleteVote(voteDto: ProcessVoteDTO, user: GetUserDto): Promise<void> {
+    if (user.id === voteDto.fromUserId) {
       throw new BadRequestException("You can't delete a vote for yourself");
     }
+    voteDto.fromUserId = user.id;
     this.logger.info('Deleting an existing vote.');
-    const existingVote = await this.voteRepository.findOne({ where: { fromUserId, entityType, entityId } });
+    const existingVote = await this.voteRepository.findOne({
+      where: { fromUserId: voteDto.fromUserId, entityType: voteDto.entityType, entityId: voteDto.entityId },
+    });
     if (!existingVote) {
       this.logger.warn('No existing vote to delete.');
       throw new BadRequestException('No existing vote to delete');
     }
-    const entity = await this.getRatableEntity(entityType, entityId);
+    const entity = await this.getRatableEntity(voteDto.entityType, voteDto.entityId);
     if (!entity) {
       this.logger.warn('Entity not found.');
       throw new BadRequestException('Entity not found');
     }
     entity.rating -= existingVote.value;
-    await this.saveEntity(entityType, entity);
+    await this.saveEntity(voteDto.entityType, entity);
     await this.voteRepository.softDelete(existingVote);
     this.logger.info('Successfully deleted the vote.');
   }

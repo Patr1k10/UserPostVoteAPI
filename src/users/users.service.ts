@@ -104,7 +104,7 @@ export class UsersService {
   }
 
   @ApiProperty({ description: 'Gets a users by ID' })
-  async getUserById(id: number): Promise<GetUserDto> {
+  async getUserById(id: number): Promise<User> {
     const user = await this.userRepository.createQueryBuilder('user').where({ id }).getOne();
     if (!user) {
       throw new Error('User is not found');
