@@ -1,9 +1,12 @@
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { IsNumber, IsString, Max, Min, NotEquals } from 'class-validator';
+import { InputType, Field } from '@nestjs/graphql';
 
+@InputType()
 export class ProcessVoteDTO {
   @ApiHideProperty()
   @IsNumber()
+  @Field()
   fromUserId: number;
 
   @ApiProperty({
@@ -12,6 +15,7 @@ export class ProcessVoteDTO {
     example: 'Post',
   })
   @IsString()
+  @Field()
   entityType: string;
 
   @ApiProperty({
@@ -20,6 +24,7 @@ export class ProcessVoteDTO {
     example: 1,
   })
   @IsNumber()
+  @Field()
   entityId: number;
 
   @ApiProperty({
@@ -33,5 +38,6 @@ export class ProcessVoteDTO {
   @Min(-1)
   @Max(1)
   @NotEquals(0)
+  @Field()
   value: number;
 }

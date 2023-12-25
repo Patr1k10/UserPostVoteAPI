@@ -1,6 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, MaxLength, IsOptional } from 'class-validator';
+import { Field, InputType } from '@nestjs/graphql';
 
+@InputType()
 export class CreatePostDto {
   @ApiProperty({
     description: 'The title of the post',
@@ -10,6 +12,7 @@ export class CreatePostDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(500)
+  @Field()
   title: string;
 
   @ApiProperty({
@@ -18,6 +21,7 @@ export class CreatePostDto {
   })
   @IsString()
   @IsNotEmpty()
+  @Field()
   content: string;
 
   @ApiProperty({
@@ -27,5 +31,6 @@ export class CreatePostDto {
   })
   @IsString()
   @IsOptional()
+  @Field()
   username?: string;
 }

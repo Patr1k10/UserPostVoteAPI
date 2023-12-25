@@ -1,12 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsNumber, IsString, Length } from 'class-validator';
 import { Exclude } from 'class-transformer';
-
+import { Field, InputType } from '@nestjs/graphql';
+@InputType()
 export class GetUserDto {
-  @ApiProperty({ description: 'The ID of the user' })
+  @ApiProperty({ description: 'The ID of the users' })
   @IsNumber()
   @IsNotEmpty()
-  readonly id: number;
+  @Field()
+  readonly id?: number;
 
   @ApiProperty({ description: 'The username', minLength: 3, maxLength: 30 })
   @IsString()
@@ -26,11 +28,13 @@ export class GetUserDto {
   @Length(1, 30)
   lastName?: string;
 
+  role?: string;
+
   @Exclude()
   updated_at?: Date;
 
   @Exclude()
-  password: string;
+  password?: string;
 
   @Exclude()
   created_at?: Date;

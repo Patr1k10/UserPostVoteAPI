@@ -4,7 +4,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { PostsService } from './posts.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { GetUser } from '../decorator/getUser.decorator';
-import { GetUserDto } from '../user/dto/get.user.dto';
+import { GetUserDto } from '../users/dto/get.user.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 
 @ApiTags('Posts')
@@ -29,11 +29,7 @@ export class PostsController {
   @ApiBearerAuth()
   @Get()
   @UseGuards(AuthGuard('jwt'))
-  async findAllMayPosts(
-    @GetUser() user: GetUserDto,
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
-  ) {
+  async findAllMayPosts(@GetUser() user: GetUserDto, @Query('page') page = 1, @Query('limit') limit = 10) {
     return this.postsService.findAllMayPosts(user, page, limit);
   }
 

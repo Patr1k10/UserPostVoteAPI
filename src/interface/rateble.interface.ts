@@ -1,4 +1,4 @@
 export interface IRatable {
-  rating: number;
-  id: number;
+  id?: number;
+  rating?: number;
 }

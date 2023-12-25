@@ -3,10 +3,10 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { PinoLogger } from 'nestjs-pino';
 import { Repository } from 'typeorm';
-import { User } from '../entities/user.entity';
+import { User } from '../entities/users.entity';
 import { Post } from '../entities/post.entity';
 import { CreatePostDto } from './dto/create-post.dto';
-import { GetUserDto } from '../user/dto/get.user.dto';
+import { GetUserDto } from '../users/dto/get.user.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 
 @ApiTags('Posts')
@@ -24,8 +24,8 @@ export class PostsService {
 
   private async validateUserAndGetFromDB(user: GetUserDto): Promise<User> {
     if (!user || !user.username) {
-      this.logger.error('Invalid user or username');
-      throw new BadRequestException('Invalid user or username');
+      this.logger.error('Invalid users or username');
+      throw new BadRequestException('Invalid users or username');
     }
     const userFromDB = await this.userRepository.findOne({ where: { username: user.username } });
     if (!userFromDB) {
@@ -45,7 +45,7 @@ export class PostsService {
   }
 
   @ApiOperation({ summary: 'Get all posts by page' })
-  async findAllMayPosts(user: GetUserDto, page: number = 1, limit: number = 10) {
+  async findAllMayPosts(user: GetUserDto, page = 1, limit = 10) {
     const userFromDB = await this.validateUserAndGetFromDB(user);
     const [posts, total] = await this.postRepository.findAndCount({
       where: { user: { id: userFromDB.id } },

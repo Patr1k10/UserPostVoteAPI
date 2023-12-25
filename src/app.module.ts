@@ -1,39 +1,41 @@
-import * as dotenv from 'dotenv';
-import { JwtModule } from '@nestjs/jwt';
 import { Logger, Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
-import { PassportModule } from '@nestjs/passport';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuthController } from './user/auth.controller';
-import { JwtStrategy } from './guard/jwt.strategy';
+import { ConfigModule } from '@nestjs/config';
+import { transformAndValidateSync } from 'class-transformer-validator';
+import { GraphQLModule } from '@nestjs/graphql';
+import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { DatabaseModule } from './db/database.module';
 import { AppConfig } from './app.config';
-import { User } from './entities/user.entity';
-import { UserController } from './user/user.controller';
-import { UserModule } from './user/user.module';
-import { UserService } from './user/user.service';
-import { Vote } from './entities/vote.entity';
-import { VoteController } from './vote/vote.controller';
-import { VoteService } from './vote/vote.service';
+import { UsersModule } from './users/users.module';
 import { PostsModule } from './posts/posts.module';
-import { Post } from './entities/post.entity';
-
-dotenv.config();
+import { VoteModule } from './vote/vote.module';
+import { AuthModule } from './guard/auth.module';
+import { Environment } from './config/environment';
+import { UserResolver } from './users/users.resolver';
+import { PostsResolver } from './posts/posts.resolver';
+import { VoteResolver } from './vote/vote.resolver';
 
 @Module({
   imports: [
-    LoggerModule.forRoot(AppConfig.getLoggerConfig()),
-
-    JwtModule.register({
-      secret: process.env.SECRET_KEY,
-      signOptions: { expiresIn: '12h' },
+    GraphQLModule.forRoot<ApolloDriverConfig>({
+      driver: ApolloDriver,
+      autoSchemaFile: 'schema.gql',
+      sortSchema: true,
+      playground: true,
     }),
-    PassportModule.register({ defaultStrategy: 'jwt' }),
+
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    LoggerModule.forRoot(AppConfig.getLoggerConfig()),
     DatabaseModule,
-    TypeOrmModule.forFeature([User, Vote, Post]),
     PostsModule,
+    UsersModule,
+    VoteModule,
+    AuthModule,
   ],
-  controllers: [UserController, AuthController, VoteController],
-  providers: [UserService, Logger, UserModule, JwtStrategy, VoteService],
+  controllers: [],
+  providers: [Logger, { provide: Environment, useValue: transformAndValidateSync(Environment, process.env) }],
+  exports: [],
 })
 export class AppModule {}
